@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"sync"
 
+	cs "github.com/kubedb/apimachinery/client/clientset/versioned/typed/kubedb/v1alpha1"
 	"github.com/appscode/kutil/meta"
 	api "github.com/kubedb/apimachinery/apis/kubedb/v1alpha1"
 	hookapi "github.com/kubedb/kubedb-server/pkg/admission/api"
@@ -19,6 +20,7 @@ import (
 
 type MongoDBValidator struct {
 	client      kubernetes.Interface
+	extClient   cs.KubedbV1alpha1Interface
 	lock        sync.RWMutex
 	initialized bool
 }
@@ -42,7 +44,12 @@ func (a *MongoDBValidator) Initialize(config *rest.Config, stopCh <-chan struct{
 
 	shallowCopy := *config
 	var err error
-	a.client, err = kubernetes.NewForConfig(&shallowCopy)
+	if a.client, err = kubernetes.NewForConfig(&shallowCopy); err != nil {
+		return err
+	}
+	if a.extClient, err = cs.NewForConfig(&shallowCopy); err != nil {
+		return err
+	}
 	return err
 }
 

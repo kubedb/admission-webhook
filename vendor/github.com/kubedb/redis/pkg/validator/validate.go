@@ -4,23 +4,22 @@ import (
 	"fmt"
 
 	api "github.com/kubedb/apimachinery/apis/kubedb/v1alpha1"
+	adr "github.com/kubedb/apimachinery/pkg/docker"
 	amv "github.com/kubedb/apimachinery/pkg/validator"
-	"k8s.io/apimachinery/pkg/util/sets"
+	dr "github.com/kubedb/redis/pkg/docker"
 	"k8s.io/client-go/kubernetes"
 )
 
-var (
-	redisVersions = sets.NewString("4", "4.0", "4.0.6")
-)
-
-func ValidateRedis(client kubernetes.Interface, redis *api.Redis) error {
+func ValidateRedis(client kubernetes.Interface, redis *api.Redis, docker *dr.Docker) error {
 	if redis.Spec.Version == "" {
 		return fmt.Errorf(`object 'Version' is missing in '%v'`, redis.Spec)
 	}
 
-	// check Redis version validation
-	if !redisVersions.Has(string(redis.Spec.Version)) {
-		return fmt.Errorf(`KubeDB doesn't support Redis version: %s`, string(redis.Spec.Version))
+	if docker != nil {
+		// Set Database Image version
+		if err := adr.CheckDockerImageVersion(docker.GetImage(redis), string(redis.Spec.Version)); err != nil {
+			return fmt.Errorf(`image %v not found`, docker.GetImageWithTag(redis))
+		}
 	}
 
 	if redis.Spec.Storage != nil {

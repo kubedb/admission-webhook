@@ -4,24 +4,22 @@ import (
 	"fmt"
 
 	api "github.com/kubedb/apimachinery/apis/kubedb/v1alpha1"
+	adr "github.com/kubedb/apimachinery/pkg/docker"
 	amv "github.com/kubedb/apimachinery/pkg/validator"
+	dr "github.com/kubedb/mysql/pkg/docker"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/kubernetes"
 )
 
-var (
-	mysqlVersions = sets.NewString("8.0", "8")
-)
-
-func ValidateMySQL(client kubernetes.Interface, mysql *api.MySQL) error {
+func ValidateMySQL(client kubernetes.Interface, mysql *api.MySQL, docker *dr.Docker) error {
 	if mysql.Spec.Version == "" {
 		return fmt.Errorf(`object 'Version' is missing in '%v'`, mysql.Spec)
 	}
 
-	// check MySQL version validation
-	if !mysqlVersions.Has(string(mysql.Spec.Version)) {
-		return fmt.Errorf(`KubeDB doesn't support MySQL version: %s`, string(mysql.Spec.Version))
+	if docker != nil {
+		if err := adr.CheckDockerImageVersion(docker.GetImage(mysql), string(mysql.Spec.Version)); err != nil {
+			return fmt.Errorf(`image %s not found`, docker.GetImageWithTag(mysql))
+		}
 	}
 
 	if mysql.Spec.Storage != nil {
