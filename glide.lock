@@ -1,5 +1,5 @@
 hash: 2d7c8375cfb1e4c8e455180ada9d30abc26680094c54018b3b898a75592ac439
-updated: 2018-02-26T15:43:59.009728726+06:00
+updated: 2018-02-26T15:50:26.936747291+06:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
@@ -16,11 +16,9 @@ imports:
   - encoding/json/types
   - encoding/yaml
   - homedir
-  - ioutil
   - log
   - log/golog
   - runtime
-  - sets
   - strings
   - types
   - version
@@ -168,18 +166,6 @@ imports:
   - spew
 - name: github.com/dgrijalva/jwt-go
   version: 01aeca54ebda6e0fbfafd0a524d234159c05ec20
-- name: github.com/docker/distribution
-  version: edc3ab29cdff8694dd6feb85cfeb4b5f1b38ed9c
-  subpackages:
-  - context
-  - digestset
-  - manifest
-  - manifest/schema1
-  - manifest/schema2
-  - reference
-  - uuid
-- name: github.com/docker/libtrust
-  version: aabc10ec26b754e797f9028f4589c5b7bd90dc20
 - name: github.com/elazarl/go-bindata-assetfs
   version: 3dcc96556217539f50599357fb481ac0dc7439b9
 - name: github.com/emicklei/go-restful
@@ -190,8 +176,6 @@ imports:
   version: dcef7f55730566d41eae5db10e7d6981829720f6
 - name: github.com/evanphx/json-patch
   version: 944e07253867aacae43c04b2e6a239005443f33a
-- name: github.com/fsnotify/fsnotify
-  version: c2828203cd70a50dcccfb2761f8b1f8ceef9a8e9
 - name: github.com/ghodss/yaml
   version: 0ca9ea5df5451ffdf184b4428c902747c2c11cd7
 - name: github.com/go-ini/ini
@@ -240,10 +224,6 @@ imports:
   - OpenAPIv2
   - compiler
   - extensions
-- name: github.com/gorilla/context
-  version: 08b5f424b9271eedf6f9f0ce86cb9396ed337a42
-- name: github.com/gorilla/mux
-  version: 0a192a193177452756c362c20087ddafcf6829c4
 - name: github.com/graymeta/stow
   version: 6f2b8867a3fb15cca5507da1d552b55cfe5d07a7
   repo: https://github.com/appscode/stow.git
@@ -274,10 +254,6 @@ imports:
   version: a0d98a5f288019575c6d1f4bb1573fef2d1fcdc4
   subpackages:
   - simplelru
-- name: github.com/heroku/docker-registry-client
-  version: fd2fe803496897db70c236ee244f41487ea92ec2
-  subpackages:
-  - registry
 - name: github.com/howeyc/gopass
   version: bf9dde6d0d2c004a008c27aaee91170c786f6db8
 - name: github.com/imdario/mergo
@@ -298,38 +274,32 @@ imports:
   - apis/kubedb
   - apis/kubedb/v1alpha1
   - client/clientset/versioned/scheme
-  - pkg/docker
+  - client/clientset/versioned/typed/kubedb/v1alpha1
   - pkg/storage
   - pkg/validator
 - name: github.com/kubedb/elasticsearch
-  version: cb4b4269abe35bf279ebb65f67d162840f2a198e
+  version: 6a5e3a0a5b35788c5bf499c5f199c3a87bb6e678
   subpackages:
-  - pkg/docker
   - pkg/validator
 - name: github.com/kubedb/memcached
-  version: 08191a9cdbd143cebcb343c969d50b6420e19542
+  version: 3f14a34ec5d89da05c90fabccab3bbfb4e3a7b1e
   subpackages:
-  - pkg/docker
   - pkg/validator
 - name: github.com/kubedb/mongodb
-  version: de8f30be6c914ead85d25596836e7fb5313356f5
+  version: 9ac4d6d3c43e60c99f45aba8ae5d47fa29e3a019
   subpackages:
-  - pkg/docker
   - pkg/validator
 - name: github.com/kubedb/mysql
-  version: 6db2ae8d66b38c00106969bc801b247033e129dd
+  version: 5ee1ac8cd219a6ad9de27c7fd853e3ef88e2e0f9
   subpackages:
-  - pkg/docker
   - pkg/validator
 - name: github.com/kubedb/postgres
-  version: d04e61ec820c48c076828471479d45ceee29ac9a
+  version: 4f0d831f8bcdadec688f19ccfc52e4c1a6f79002
   subpackages:
-  - pkg/docker
   - pkg/validator
 - name: github.com/kubedb/redis
-  version: 56cc3e767e6714b07f84915e9177c138df299c3b
+  version: 04c06279382ffdef80cbe56ad89fb3561c9a3bea
   subpackages:
-  - pkg/docker
   - pkg/validator
 - name: github.com/mailru/easyjson
   version: 2f5df55504ebc322e4d52d34df6a1f5b503bf26d
@@ -349,8 +319,6 @@ imports:
   version: ae9f0ea1605b9aa6434ed5c731ca35d83ba67c55
 - name: github.com/NYTimes/gziphandler
   version: 56545f4a5d46df9a6648819d1664c3a03a13ffdb
-- name: github.com/opencontainers/go-digest
-  version: 279bed98673dd5bef374d3b6e4b09e2af76183bf
 - name: github.com/pborman/uuid
   version: ca53cad383cad2479bbba7f7a1a05797ec1386e4
 - name: github.com/peterbourgon/diskv

@@ -42,12 +42,11 @@ func (a *PostgresValidator) Initialize(config *rest.Config, stopCh <-chan struct
 
 	a.initialized = true
 
-	shallowCopy := *config
 	var err error
-	if a.client, err = kubernetes.NewForConfig(&shallowCopy); err != nil {
+	if a.client, err = kubernetes.NewForConfig(config); err != nil {
 		return err
 	}
-	if a.extClient, err = cs.NewForConfig(&shallowCopy); err != nil {
+	if a.extClient, err = cs.NewForConfig(config); err != nil {
 		return err
 	}
 	return nil
@@ -104,5 +103,5 @@ func (a *PostgresValidator) check(op admission.Operation, in runtime.Object) err
 	if op == admission.Delete && obj.Spec.DoNotPause {
 		return fmt.Errorf(`postgres "%s" can't be paused. To continue delete, unset spec.doNotPause and retry`, obj.Name)
 	}
-	return pgv.ValidatePostgres(a.client, obj)
+	return pgv.ValidatePostgres(a.client, a.extClient, obj)
 }

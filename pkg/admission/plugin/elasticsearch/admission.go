@@ -42,12 +42,11 @@ func (a *ElasticsearchValidator) Initialize(config *rest.Config, stopCh <-chan s
 
 	a.initialized = true
 
-	shallowCopy := *config
 	var err error
-	if a.client, err = kubernetes.NewForConfig(&shallowCopy); err != nil {
+	if a.client, err = kubernetes.NewForConfig(config); err != nil {
 		return err
 	}
-	if a.extClient, err = cs.NewForConfig(&shallowCopy); err != nil {
+	if a.extClient, err = cs.NewForConfig(config); err != nil {
 		return err
 	}
 	return err
@@ -103,7 +102,6 @@ func (a *ElasticsearchValidator) check(op admission.Operation, in runtime.Object
 	obj := in.(*api.Elasticsearch)
 	if op == admission.Delete && obj.Spec.DoNotPause {
 		return fmt.Errorf(`elasticsearch "%s" can't be paused. To continue, unset spec.doNotPause and retry`, obj.Name)
-
 	}
-	return esv.ValidateElasticsearch(a.client, obj)
+	return esv.ValidateElasticsearch(a.client, a.extClient, obj)
 }
