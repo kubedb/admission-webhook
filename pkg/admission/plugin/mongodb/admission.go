@@ -100,10 +100,8 @@ func (a *MongoDBValidator) Admit(req *admission.AdmissionRequest) *admission.Adm
 
 func (a *MongoDBValidator) check(op admission.Operation, in runtime.Object) error {
 	obj := in.(*api.MongoDB)
-	if op == admission.Delete {
-		if obj.Spec.DoNotPause {
-			return fmt.Errorf(`MongoDB %s can't be paused. To continue delete, unset spec.doNotPause and retry`, obj.Name)
-		}
+	if op == admission.Delete && obj.Spec.DoNotPause {
+		return fmt.Errorf(`mongodb "%s" can't be paused. To continue delete, unset spec.doNotPause and retry`, obj.Name)
 	}
 	return mgv.ValidateMongoDB(a.client, a.extClient, obj)
 }

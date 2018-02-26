@@ -100,10 +100,8 @@ func (a *MySQLValidator) Admit(req *admission.AdmissionRequest) *admission.Admis
 
 func (a *MySQLValidator) check(op admission.Operation, in runtime.Object) error {
 	obj := in.(*api.MySQL)
-	if op == admission.Delete {
-		if obj.Spec.DoNotPause {
-			return fmt.Errorf(`MySQL %s can't be paused. To continue delete, unset spec.doNotPause and retry`, obj.Name)
-		}
+	if op == admission.Delete && obj.Spec.DoNotPause {
+		return fmt.Errorf(`mysql "%s" can't be paused. To continue delete, unset spec.doNotPause and retry`, obj.Name)
 	}
 	return msv.ValidateMySQL(a.client, a.extClient, obj)
 }

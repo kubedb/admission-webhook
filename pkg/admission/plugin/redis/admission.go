@@ -100,10 +100,8 @@ func (a *RedisValidator) Admit(req *admission.AdmissionRequest) *admission.Admis
 
 func (a *RedisValidator) check(op admission.Operation, in runtime.Object) error {
 	obj := in.(*api.Redis)
-	if op == admission.Delete {
-		if obj.Spec.DoNotPause {
-			return fmt.Errorf(`Redis %s can't be paused. To continue delete, unset spec.doNotPause and retry`, obj.Name)
-		}
+	if op == admission.Delete && obj.Spec.DoNotPause {
+		return fmt.Errorf(`redis "%s" can't be paused. To continue delete, unset spec.doNotPause and retry`, obj.Name)
 	}
 	return rdv.ValidateRedis(a.client, a.extClient, obj)
 }

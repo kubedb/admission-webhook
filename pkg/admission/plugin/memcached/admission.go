@@ -100,10 +100,8 @@ func (a *MemcachedValidator) Admit(req *admission.AdmissionRequest) *admission.A
 
 func (a *MemcachedValidator) check(op admission.Operation, in runtime.Object) error {
 	obj := in.(*api.Memcached)
-	if op == admission.Delete {
-		if obj.Spec.DoNotPause {
-			return fmt.Errorf(`Memcached %s can't be paused. To continue delete, unset spec.doNotPause and retry`, obj.Name)
-		}
+	if op == admission.Delete && obj.Spec.DoNotPause {
+		return fmt.Errorf(`memcached "%s" can't be paused. To continue delete, unset spec.doNotPause and retry`, obj.Name)
 	}
 	return memv.ValidateMemcached(a.client, a.extClient, obj)
 }
