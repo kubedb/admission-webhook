@@ -6,6 +6,7 @@ import (
 
 	hookapi "github.com/kubedb/kubedb-server/pkg/admission/api"
 	"github.com/kubedb/kubedb-server/pkg/registry/admissionreview"
+	"github.com/pkg/errors"
 	admission "k8s.io/api/admission/v1beta1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/apimachinery"
@@ -49,6 +50,7 @@ type Config struct {
 
 type ExtraConfig struct {
 	AdmissionHooks []hookapi.AdmissionHook
+	ClientConfig   *restclient.Config
 }
 
 // AdmissionServer contains state for a Kubernetes cluster master/api server.
@@ -92,11 +94,6 @@ func (c completedConfig) New() (*AdmissionServer, error) {
 		GenericAPIServer: genericServer,
 	}
 
-	inClusterConfig, err := restclient.InClusterConfig()
-	if err != nil {
-		return nil, err
-	}
-
 	for _, versionMap := range admissionHooksByGroupThenVersion(c.ExtraConfig.AdmissionHooks...) {
 		accessor := meta.NewAccessor()
 		versionInterfaces := &meta.VersionInterfaces{
@@ -105,7 +102,7 @@ func (c completedConfig) New() (*AdmissionServer, error) {
 		}
 		interfacesFor := func(version schema.GroupVersion) (*meta.VersionInterfaces, error) {
 			if version != admission.SchemeGroupVersion {
-				return nil, fmt.Errorf("unexpected version %v", version)
+				return nil, errors.Errorf("unexpected version %v", version)
 			}
 			return versionInterfaces, nil
 		}
@@ -149,9 +146,11 @@ func (c completedConfig) New() (*AdmissionServer, error) {
 				apiGroupInfo.GroupMeta.GroupVersions = appendUniqueGroupVersion(apiGroupInfo.GroupMeta.GroupVersions, admissionVersion)
 
 				admissionReview := admissionreview.NewREST(admissionHook.Admit)
-				v1alpha1storage := map[string]rest.Storage{
-					admissionResource.Resource: admissionReview,
+				v1alpha1storage, ok := apiGroupInfo.VersionedResourcesStorageMap[admissionVersion.Version]
+				if !ok {
+					v1alpha1storage = map[string]rest.Storage{}
 				}
+				v1alpha1storage[admissionResource.Resource] = admissionReview
 				apiGroupInfo.VersionedResourcesStorageMap[admissionVersion.Version] = v1alpha1storage
 			}
 		}
@@ -164,14 +163,15 @@ func (c completedConfig) New() (*AdmissionServer, error) {
 		}
 	}
 
-	for _, hook := range c.ExtraConfig.AdmissionHooks {
-		postStartName := postStartHookName(hook)
+	for i := range c.ExtraConfig.AdmissionHooks {
+		admissionHook := c.ExtraConfig.AdmissionHooks[i]
+		postStartName := postStartHookName(admissionHook)
 		if len(postStartName) == 0 {
 			continue
 		}
 		s.GenericAPIServer.AddPostStartHookOrDie(postStartName,
 			func(context genericapiserver.PostStartHookContext) error {
-				return hook.Initialize(inClusterConfig, context.StopCh)
+				return admissionHook.Initialize(c.ExtraConfig.ClientConfig, context.StopCh)
 			},
 		)
 	}

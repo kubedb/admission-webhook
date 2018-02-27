@@ -12,6 +12,17 @@ To install KubeDB, please follow the guide [here](https://kubedb.com/docs/latest
 curl https://raw.githubusercontent.com/kubedb/apiserver/master/hack/deploy/webhook.sh | bash -s -- --rbac
 ```
 
+## Run Locally
+
+```console
+kubedb-server run \
+  --secure-port=8443 \
+  --kubeconfig="$HOME/.kube/config" \
+  --authorization-kubeconfig="$HOME/.kube/config" \
+  --authentication-kubeconfig="$HOME/.kube/config" \
+  --authentication-skip-lookup
+```
+
 ## Using KubeDB
 Want to learn how to use KubeDB? Please start [here](https://kubedb.com/docs/latest/guides/).
 
