@@ -9,7 +9,7 @@ KubeDB api server
 To install KubeDB, please follow the guide [here](https://kubedb.com/docs/latest/setup/install/). To install the apiserver, run the following command:
 
 ```console
-curl https://raw.githubusercontent.com/kubedb/apiserver/master/hack/deploy/webhook.sh | bash -s -- --rbac
+curl https://raw.githubusercontent.com/kubedb/apiserver/master/hack/deploy/server.sh | bash -s -- --rbac
 ```
 
 ## Run Locally
