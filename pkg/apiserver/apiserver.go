@@ -53,8 +53,8 @@ type ExtraConfig struct {
 	ClientConfig   *restclient.Config
 }
 
-// AdmissionServer contains state for a Kubernetes cluster master/api server.
-type AdmissionServer struct {
+// KubedbServer contains state for a Kubernetes cluster master/api server.
+type KubedbServer struct {
 	GenericAPIServer *genericapiserver.GenericAPIServer
 }
 
@@ -83,14 +83,14 @@ func (c *Config) Complete() CompletedConfig {
 	return CompletedConfig{&completedCfg}
 }
 
-// New returns a new instance of AdmissionServer from the given config.
-func (c completedConfig) New() (*AdmissionServer, error) {
-	genericServer, err := c.GenericConfig.New("admission-server", genericapiserver.EmptyDelegate) // completion is done in Complete, no need for a second time
+// New returns a new instance of KubedbServer from the given config.
+func (c completedConfig) New() (*KubedbServer, error) {
+	genericServer, err := c.GenericConfig.New("kubedb-server", genericapiserver.EmptyDelegate) // completion is done in Complete, no need for a second time
 	if err != nil {
 		return nil, err
 	}
 
-	s := &AdmissionServer{
+	s := &KubedbServer{
 		GenericAPIServer: genericServer,
 	}
 
