@@ -12,7 +12,6 @@ import (
 	"github.com/pkg/errors"
 	admission "k8s.io/api/admission/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -74,6 +73,19 @@ func (a *MongoDBValidator) Admit(req *admission.AdmissionRequest) *admission.Adm
 		return status
 	}
 
+	if req.Operation == admission.Delete {
+		if err := a.check(req.Name, req.Namespace); err != nil {
+			status.Allowed = false
+			status.Result = &metav1.Status{
+				Status: metav1.StatusFailure, Code: http.StatusBadRequest, Reason: metav1.StatusReasonBadRequest,
+				Message: err.Error(),
+			}
+			return status
+		}
+		status.Allowed = true
+		return status
+	}
+
 	obj, err := meta.UnmarshalToJSON(req.Object.Raw, api.SchemeGroupVersion)
 	if err != nil {
 		status.Allowed = false
@@ -84,7 +96,7 @@ func (a *MongoDBValidator) Admit(req *admission.AdmissionRequest) *admission.Adm
 		return status
 	}
 
-	err = a.check(req.Operation, obj)
+	err = mgv.ValidateMongoDB(a.client, a.extClient, obj.(*api.MongoDB))
 	if err != nil {
 		status.Allowed = false
 		status.Result = &metav1.Status{
@@ -98,10 +110,13 @@ func (a *MongoDBValidator) Admit(req *admission.AdmissionRequest) *admission.Adm
 	return status
 }
 
-func (a *MongoDBValidator) check(op admission.Operation, in runtime.Object) error {
-	obj := in.(*api.MongoDB)
-	if op == admission.Delete && obj.Spec.DoNotPause {
-		return errors.Errorf(`mongodb "%s" can't be paused. To continue delete, unset spec.doNotPause and retry`, obj.Name)
+func (a *MongoDBValidator) check(name string, namespace string) error {
+	obj, err := a.extClient.MongoDBs(namespace).Get(name, metav1.GetOptions{})
+	if err != nil {
+		return errors.Errorf(`Error getting object:`, err)
 	}
-	return mgv.ValidateMongoDB(a.client, a.extClient, obj)
+	if obj.Spec.DoNotPause == true {
+		return errors.Errorf(`mongodb "%s" can't be paused. To continue delete, unset spec.doNotPause and retry`, name)
+	}
+	return nil
 }
