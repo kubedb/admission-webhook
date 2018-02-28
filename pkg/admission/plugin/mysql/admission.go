@@ -1,6 +1,7 @@
 package mysql
 
 import (
+	"fmt"
 	"net/http"
 	"sync"
 
@@ -9,14 +10,11 @@ import (
 	cs "github.com/kubedb/apimachinery/client/clientset/versioned/typed/kubedb/v1alpha1"
 	hookapi "github.com/kubedb/kubedb-server/pkg/admission/api"
 	msv "github.com/kubedb/mysql/pkg/validator"
-	"github.com/pkg/errors"
 	admission "k8s.io/api/admission/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-	"fmt"
 )
 
 type MySQLValidator struct {

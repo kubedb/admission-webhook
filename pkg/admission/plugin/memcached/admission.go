@@ -1,6 +1,7 @@
 package memcached
 
 import (
+	"fmt"
 	"net/http"
 	"sync"
 
@@ -9,14 +10,11 @@ import (
 	cs "github.com/kubedb/apimachinery/client/clientset/versioned/typed/kubedb/v1alpha1"
 	hookapi "github.com/kubedb/kubedb-server/pkg/admission/api"
 	memv "github.com/kubedb/memcached/pkg/validator"
-	"github.com/pkg/errors"
 	admission "k8s.io/api/admission/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-	"fmt"
 )
 
 type MemcachedValidator struct {
@@ -69,7 +67,7 @@ func (a *MemcachedValidator) Admit(req *admission.AdmissionRequest) *admission.A
 	if !a.initialized {
 		status.Allowed = false
 		status.Result = &metav1.Status{
-			Status:  metav1.StatusFailure, Code: http.StatusInternalServerError, Reason: metav1.StatusReasonInternalError,
+			Status: metav1.StatusFailure, Code: http.StatusInternalServerError, Reason: metav1.StatusReasonInternalError,
 			Message: "not initialized",
 		}
 		return status
@@ -81,7 +79,7 @@ func (a *MemcachedValidator) Admit(req *admission.AdmissionRequest) *admission.A
 		if err == nil && obj.Spec.DoNotPause {
 			status.Allowed = false
 			status.Result = &metav1.Status{
-				Status:  metav1.StatusFailure, Code: http.StatusBadRequest, Reason: metav1.StatusReasonBadRequest,
+				Status: metav1.StatusFailure, Code: http.StatusBadRequest, Reason: metav1.StatusReasonBadRequest,
 				Message: fmt.Sprintf(`memcached "%s" can't be paused. To continue delete, unset spec.doNotPause and retry`, req.Name),
 			}
 			return status
@@ -94,7 +92,7 @@ func (a *MemcachedValidator) Admit(req *admission.AdmissionRequest) *admission.A
 	if err != nil {
 		status.Allowed = false
 		status.Result = &metav1.Status{
-			Status:  metav1.StatusFailure, Code: http.StatusBadRequest, Reason: metav1.StatusReasonBadRequest,
+			Status: metav1.StatusFailure, Code: http.StatusBadRequest, Reason: metav1.StatusReasonBadRequest,
 			Message: err.Error(),
 		}
 		return status
@@ -104,7 +102,7 @@ func (a *MemcachedValidator) Admit(req *admission.AdmissionRequest) *admission.A
 	if err != nil {
 		status.Allowed = false
 		status.Result = &metav1.Status{
-			Status:  metav1.StatusFailure, Code: http.StatusForbidden, Reason: metav1.StatusReasonForbidden,
+			Status: metav1.StatusFailure, Code: http.StatusForbidden, Reason: metav1.StatusReasonForbidden,
 			Message: err.Error(),
 		}
 		return status
