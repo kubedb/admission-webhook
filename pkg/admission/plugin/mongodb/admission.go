@@ -74,6 +74,7 @@ func (a *MongoDBValidator) Admit(req *admission.AdmissionRequest) *admission.Adm
 	}
 
 	if req.Operation == admission.Delete {
+		// req.Object.Raw = nil, so read from kubernetes
 		obj, err := a.extClient.MongoDBs(req.Namespace).Get(req.Name, metav1.GetOptions{})
 		if err == nil && obj.Spec.DoNotPause {
 			status.Allowed = false

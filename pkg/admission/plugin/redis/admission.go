@@ -16,6 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"fmt"
 )
 
 type RedisValidator struct {
@@ -68,9 +69,24 @@ func (a *RedisValidator) Admit(req *admission.AdmissionRequest) *admission.Admis
 	if !a.initialized {
 		status.Allowed = false
 		status.Result = &metav1.Status{
-			Status: metav1.StatusFailure, Code: http.StatusInternalServerError, Reason: metav1.StatusReasonInternalError,
+			Status:  metav1.StatusFailure, Code: http.StatusInternalServerError, Reason: metav1.StatusReasonInternalError,
 			Message: "not initialized",
 		}
+		return status
+	}
+
+	if req.Operation == admission.Delete {
+		// req.Object.Raw = nil, so read from kubernetes
+		obj, err := a.extClient.Redises(req.Namespace).Get(req.Name, metav1.GetOptions{})
+		if err == nil && obj.Spec.DoNotPause {
+			status.Allowed = false
+			status.Result = &metav1.Status{
+				Status:  metav1.StatusFailure, Code: http.StatusBadRequest, Reason: metav1.StatusReasonBadRequest,
+				Message: fmt.Sprintf(`redis "%s" can't be paused. To continue delete, unset spec.doNotPause and retry`, req.Name),
+			}
+			return status
+		}
+		status.Allowed = true
 		return status
 	}
 
@@ -78,17 +94,17 @@ func (a *RedisValidator) Admit(req *admission.AdmissionRequest) *admission.Admis
 	if err != nil {
 		status.Allowed = false
 		status.Result = &metav1.Status{
-			Status: metav1.StatusFailure, Code: http.StatusBadRequest, Reason: metav1.StatusReasonBadRequest,
+			Status:  metav1.StatusFailure, Code: http.StatusBadRequest, Reason: metav1.StatusReasonBadRequest,
 			Message: err.Error(),
 		}
 		return status
 	}
 
-	err = a.check(req.Operation, obj)
+	err = rdv.ValidateRedis(a.client, a.extClient, obj.(*api.Redis))
 	if err != nil {
 		status.Allowed = false
 		status.Result = &metav1.Status{
-			Status: metav1.StatusFailure, Code: http.StatusForbidden, Reason: metav1.StatusReasonForbidden,
+			Status:  metav1.StatusFailure, Code: http.StatusForbidden, Reason: metav1.StatusReasonForbidden,
 			Message: err.Error(),
 		}
 		return status
@@ -96,12 +112,4 @@ func (a *RedisValidator) Admit(req *admission.AdmissionRequest) *admission.Admis
 
 	status.Allowed = true
 	return status
-}
-
-func (a *RedisValidator) check(op admission.Operation, in runtime.Object) error {
-	obj := in.(*api.Redis)
-	if op == admission.Delete && obj.Spec.DoNotPause {
-		return errors.Errorf(`redis "%s" can't be paused. To continue delete, unset spec.doNotPause and retry`, obj.Name)
-	}
-	return rdv.ValidateRedis(a.client, a.extClient, obj)
 }

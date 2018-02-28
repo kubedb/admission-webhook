@@ -16,6 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"fmt"
 )
 
 type MySQLValidator struct {
@@ -74,6 +75,21 @@ func (a *MySQLValidator) Admit(req *admission.AdmissionRequest) *admission.Admis
 		return status
 	}
 
+	if req.Operation == admission.Delete {
+		// req.Object.Raw = nil, so read from kubernetes
+		obj, err := a.extClient.MySQLs(req.Namespace).Get(req.Name, metav1.GetOptions{})
+		if err == nil && obj.Spec.DoNotPause {
+			status.Allowed = false
+			status.Result = &metav1.Status{
+				Status: metav1.StatusFailure, Code: http.StatusBadRequest, Reason: metav1.StatusReasonBadRequest,
+				Message: fmt.Sprintf(`mysql "%s" can't be paused. To continue delete, unset spec.doNotPause and retry`, req.Name),
+			}
+			return status
+		}
+		status.Allowed = true
+		return status
+	}
+
 	obj, err := meta.UnmarshalToJSON(req.Object.Raw, api.SchemeGroupVersion)
 	if err != nil {
 		status.Allowed = false
@@ -84,7 +100,7 @@ func (a *MySQLValidator) Admit(req *admission.AdmissionRequest) *admission.Admis
 		return status
 	}
 
-	err = a.check(req.Operation, obj)
+	err = msv.ValidateMySQL(a.client, a.extClient, obj.(*api.MySQL))
 	if err != nil {
 		status.Allowed = false
 		status.Result = &metav1.Status{
@@ -96,12 +112,4 @@ func (a *MySQLValidator) Admit(req *admission.AdmissionRequest) *admission.Admis
 
 	status.Allowed = true
 	return status
-}
-
-func (a *MySQLValidator) check(op admission.Operation, in runtime.Object) error {
-	obj := in.(*api.MySQL)
-	if op == admission.Delete && obj.Spec.DoNotPause {
-		return errors.Errorf(`mysql "%s" can't be paused. To continue delete, unset spec.doNotPause and retry`, obj.Name)
-	}
-	return msv.ValidateMySQL(a.client, a.extClient, obj)
 }

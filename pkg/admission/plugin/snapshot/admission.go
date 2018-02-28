@@ -76,7 +76,7 @@ func (a *SnapshotValidator) Admit(req *admission.AdmissionRequest) *admission.Ad
 		return status
 	}
 
-	err = a.check(req.Operation, obj)
+	err = amv.ValidateSnapshotSpec(a.client, obj.(*api.Snapshot).Spec.SnapshotStorageSpec, req.Namespace)
 	if err != nil {
 		status.Allowed = false
 		status.Result = &metav1.Status{
@@ -88,12 +88,4 @@ func (a *SnapshotValidator) Admit(req *admission.AdmissionRequest) *admission.Ad
 
 	status.Allowed = true
 	return status
-}
-
-func (a *SnapshotValidator) check(op admission.Operation, in runtime.Object) error {
-	if op == admission.Delete {
-		return nil
-	}
-	obj := in.(*api.Snapshot)
-	return amv.ValidateSnapshotSpec(a.client, obj.Spec.SnapshotStorageSpec, obj.Namespace)
 }

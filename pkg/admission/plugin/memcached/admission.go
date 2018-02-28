@@ -16,6 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"fmt"
 )
 
 type MemcachedValidator struct {
@@ -68,9 +69,24 @@ func (a *MemcachedValidator) Admit(req *admission.AdmissionRequest) *admission.A
 	if !a.initialized {
 		status.Allowed = false
 		status.Result = &metav1.Status{
-			Status: metav1.StatusFailure, Code: http.StatusInternalServerError, Reason: metav1.StatusReasonInternalError,
+			Status:  metav1.StatusFailure, Code: http.StatusInternalServerError, Reason: metav1.StatusReasonInternalError,
 			Message: "not initialized",
 		}
+		return status
+	}
+
+	if req.Operation == admission.Delete {
+		// req.Object.Raw = nil, so read from kubernetes
+		obj, err := a.extClient.Memcacheds(req.Namespace).Get(req.Name, metav1.GetOptions{})
+		if err == nil && obj.Spec.DoNotPause {
+			status.Allowed = false
+			status.Result = &metav1.Status{
+				Status:  metav1.StatusFailure, Code: http.StatusBadRequest, Reason: metav1.StatusReasonBadRequest,
+				Message: fmt.Sprintf(`memcached "%s" can't be paused. To continue delete, unset spec.doNotPause and retry`, req.Name),
+			}
+			return status
+		}
+		status.Allowed = true
 		return status
 	}
 
@@ -78,17 +94,17 @@ func (a *MemcachedValidator) Admit(req *admission.AdmissionRequest) *admission.A
 	if err != nil {
 		status.Allowed = false
 		status.Result = &metav1.Status{
-			Status: metav1.StatusFailure, Code: http.StatusBadRequest, Reason: metav1.StatusReasonBadRequest,
+			Status:  metav1.StatusFailure, Code: http.StatusBadRequest, Reason: metav1.StatusReasonBadRequest,
 			Message: err.Error(),
 		}
 		return status
 	}
 
-	err = a.check(req.Operation, obj)
+	err = memv.ValidateMemcached(a.client, a.extClient, obj.(*api.Memcached))
 	if err != nil {
 		status.Allowed = false
 		status.Result = &metav1.Status{
-			Status: metav1.StatusFailure, Code: http.StatusForbidden, Reason: metav1.StatusReasonForbidden,
+			Status:  metav1.StatusFailure, Code: http.StatusForbidden, Reason: metav1.StatusReasonForbidden,
 			Message: err.Error(),
 		}
 		return status
@@ -96,12 +112,4 @@ func (a *MemcachedValidator) Admit(req *admission.AdmissionRequest) *admission.A
 
 	status.Allowed = true
 	return status
-}
-
-func (a *MemcachedValidator) check(op admission.Operation, in runtime.Object) error {
-	obj := in.(*api.Memcached)
-	if op == admission.Delete && obj.Spec.DoNotPause {
-		return errors.Errorf(`memcached "%s" can't be paused. To continue delete, unset spec.doNotPause and retry`, obj.Name)
-	}
-	return memv.ValidateMemcached(a.client, a.extClient, obj)
 }
