@@ -15,6 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"fmt"
 )
 
 type MongoDBValidator struct {
@@ -67,18 +68,19 @@ func (a *MongoDBValidator) Admit(req *admission.AdmissionRequest) *admission.Adm
 	if !a.initialized {
 		status.Allowed = false
 		status.Result = &metav1.Status{
-			Status: metav1.StatusFailure, Code: http.StatusInternalServerError, Reason: metav1.StatusReasonInternalError,
+			Status:  metav1.StatusFailure, Code: http.StatusInternalServerError, Reason: metav1.StatusReasonInternalError,
 			Message: "not initialized",
 		}
 		return status
 	}
 
 	if req.Operation == admission.Delete {
-		if err := a.check(req.Name, req.Namespace); err != nil {
+		obj, err := a.extClient.MongoDBs(req.Namespace).Get(req.Name, metav1.GetOptions{})
+		if err == nil && obj.Spec.DoNotPause {
 			status.Allowed = false
 			status.Result = &metav1.Status{
-				Status: metav1.StatusFailure, Code: http.StatusBadRequest, Reason: metav1.StatusReasonBadRequest,
-				Message: err.Error(),
+				Status:  metav1.StatusFailure, Code: http.StatusBadRequest, Reason: metav1.StatusReasonBadRequest,
+				Message: fmt.Sprintf(`mongodb "%s" can't be paused. To continue delete, unset spec.doNotPause and retry`, req.Name),
 			}
 			return status
 		}
@@ -90,7 +92,7 @@ func (a *MongoDBValidator) Admit(req *admission.AdmissionRequest) *admission.Adm
 	if err != nil {
 		status.Allowed = false
 		status.Result = &metav1.Status{
-			Status: metav1.StatusFailure, Code: http.StatusBadRequest, Reason: metav1.StatusReasonBadRequest,
+			Status:  metav1.StatusFailure, Code: http.StatusBadRequest, Reason: metav1.StatusReasonBadRequest,
 			Message: err.Error(),
 		}
 		return status
@@ -100,7 +102,7 @@ func (a *MongoDBValidator) Admit(req *admission.AdmissionRequest) *admission.Adm
 	if err != nil {
 		status.Allowed = false
 		status.Result = &metav1.Status{
-			Status: metav1.StatusFailure, Code: http.StatusForbidden, Reason: metav1.StatusReasonForbidden,
+			Status:  metav1.StatusFailure, Code: http.StatusForbidden, Reason: metav1.StatusReasonForbidden,
 			Message: err.Error(),
 		}
 		return status
@@ -108,15 +110,4 @@ func (a *MongoDBValidator) Admit(req *admission.AdmissionRequest) *admission.Adm
 
 	status.Allowed = true
 	return status
-}
-
-func (a *MongoDBValidator) check(name string, namespace string) error {
-	obj, err := a.extClient.MongoDBs(namespace).Get(name, metav1.GetOptions{})
-	if err != nil {
-		return errors.Errorf(`Error getting object:`, err)
-	}
-	if obj.Spec.DoNotPause == true {
-		return errors.Errorf(`mongodb "%s" can't be paused. To continue delete, unset spec.doNotPause and retry`, name)
-	}
-	return nil
 }
