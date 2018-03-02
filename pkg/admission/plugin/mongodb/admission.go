@@ -1,6 +1,7 @@
 package mongodb
 
 import (
+	"encoding/json"
 	"fmt"
 	"sync"
 
@@ -8,6 +9,7 @@ import (
 	"github.com/appscode/kutil/meta"
 	api "github.com/kubedb/apimachinery/apis/kubedb/v1alpha1"
 	cs "github.com/kubedb/apimachinery/client/clientset/versioned/typed/kubedb/v1alpha1"
+	"github.com/kubedb/kubedb-server/pkg/admission/util"
 	mgv "github.com/kubedb/mongodb/pkg/validator"
 	admission "k8s.io/api/admission/v1beta1"
 	kerr "k8s.io/apimachinery/pkg/api/errors"
@@ -68,7 +70,10 @@ func (a *MongoDBValidator) Admit(req *admission.AdmissionRequest) *admission.Adm
 		return hookapi.StatusUninitialized()
 	}
 
-	if req.Operation == admission.Delete {
+	str, _ := json.MarshalIndent(req, "", "    ")
+
+	switch req.Operation {
+	case admission.Delete:
 		// req.Object.Raw = nil, so read from kubernetes
 		obj, err := a.extClient.MongoDBs(req.Namespace).Get(req.Name, metav1.GetOptions{})
 		if err != nil && !kerr.IsNotFound(err) {
@@ -76,20 +81,19 @@ func (a *MongoDBValidator) Admit(req *admission.AdmissionRequest) *admission.Adm
 		} else if err == nil && obj.Spec.DoNotPause {
 			return hookapi.StatusBadRequest(fmt.Errorf(`mongodb "%s" can't be paused. To continue delete, unset spec.doNotPause and retry`, req.Name))
 		}
-		status.Allowed = true
-		return status
+	case admission.Create:
+		obj, err := meta.UnmarshalToJSON(req.Object.Raw, api.SchemeGroupVersion)
+		if err != nil {
+			return hookapi.StatusBadRequest(err)
+		}
+		if err = mgv.ValidateMongoDB(a.client, a.extClient, obj.(*api.MongoDB)); err != nil {
+			return hookapi.StatusForbidden(err)
+		}
+	case admission.Update:
+		if err := util.ValidateUpdate(req.Object.Raw, req.OldObject.Raw, req.Kind.Kind); err != nil {
+			return hookapi.StatusForbidden(fmt.Errorf("%v %v", string(str), err))
+		}
 	}
-
-	obj, err := meta.UnmarshalToJSON(req.Object.Raw, api.SchemeGroupVersion)
-	if err != nil {
-		return hookapi.StatusBadRequest(err)
-	}
-
-	err = mgv.ValidateMongoDB(a.client, a.extClient, obj.(*api.MongoDB))
-	if err != nil {
-		return hookapi.StatusForbidden(err)
-	}
-
 	status.Allowed = true
 	return status
 }

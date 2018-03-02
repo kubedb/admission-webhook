@@ -1,5 +1,5 @@
 hash: ea3f247f3c5bba14f10909999af4dfe848361540bdba7083f9125871b58458fb
-updated: 2018-03-02T00:15:23.650090352-08:00
+updated: 2018-03-02T17:52:58.110285631+06:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
@@ -27,7 +27,7 @@ imports:
   subpackages:
   - api
 - name: github.com/appscode/kutil
-  version: b50a429280d225160f1be6017ce967c93769dac1
+  version: a40b31e357afdbd506fe4a21b58f87953b84785e
   subpackages:
   - admission/api
   - meta
@@ -158,7 +158,7 @@ imports:
   version: a1c26060308c9a7798d2900a9ec5f37d3e4eb42c
   repo: https://github.com/tamalsaha/prometheus-operator.git
 - name: github.com/cpuguy83/go-md2man
-  version: 71acacd42f85e5e82f70a55327789582a5200a90
+  version: 48d8747a2ca13185e7cc8efe6e9fc196a83f71a5
   subpackages:
   - md2man
 - name: github.com/davecgh/go-spew
@@ -195,7 +195,7 @@ imports:
   - proto
   - sortkeys
 - name: github.com/golang/glog
-  version: 44145f04b68cf362d9c4df2182967c2275eaefed
+  version: 23def4e6c14b4da8ac2ed8007337bc5eb5007998
 - name: github.com/golang/protobuf
   version: 1643683e1b54a9e88ad26d98f81400c8c9d9f4f9
   subpackages:
@@ -218,7 +218,7 @@ imports:
 - name: github.com/google/gofuzz
   version: 44d81051d367757e1c7c6a5a86423ece9afcf63c
 - name: github.com/google/uuid
-  version: dec09d789f3dba190787f8b4454c7d3c936fed9e
+  version: e367a344cbe8e08149f9951115dc299ebd42b919
 - name: github.com/googleapis/gnostic
   version: 0c5108395e2debce0d731cf0287ddf7242066aba
   subpackages:
@@ -325,7 +325,7 @@ imports:
 - name: github.com/peterbourgon/diskv
   version: 5f041e8faa004a95c88a202771f4cc3e991971e6
 - name: github.com/pkg/errors
-  version: 30136e27e2ac8d167177e8a583aa4c3fea5be833
+  version: 645ef00459ed84a119197bfb8d8205042c6df63d
 - name: github.com/prometheus/client_golang
   version: c5b7fccd204277076155f10851dad72b76a49317
   subpackages:
@@ -366,6 +366,8 @@ imports:
   - doc
 - name: github.com/spf13/pflag
   version: ee5fd03fd6acfd43e44aea0b4135958546ed8e73
+- name: github.com/the-redback/go-oneliners
+  version: 82a97ec58df4809a2bc57ebbbcc1e6a2feb78111
 - name: github.com/ugorji/go
   version: ded73eae5db7e7a0ef6f55aace87a2873c5d2b74
   subpackages:
@@ -541,6 +543,7 @@ imports:
   - pkg/util/httpstream
   - pkg/util/intstr
   - pkg/util/json
+  - pkg/util/jsonmergepatch
   - pkg/util/mergepatch
   - pkg/util/net
   - pkg/util/proxy
