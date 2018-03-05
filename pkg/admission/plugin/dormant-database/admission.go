@@ -1,15 +1,13 @@
-package memcached
+package dormant_database
 
 import (
 	"fmt"
 	"sync"
 
 	hookapi "github.com/appscode/kutil/admission/api"
-	"github.com/appscode/kutil/meta"
 	api "github.com/kubedb/apimachinery/apis/kubedb/v1alpha1"
 	cs "github.com/kubedb/apimachinery/client/clientset/versioned/typed/kubedb/v1alpha1"
 	"github.com/kubedb/kubedb-server/pkg/admission/util"
-	memv "github.com/kubedb/memcached/pkg/validator"
 	admission "k8s.io/api/admission/v1beta1"
 	kerr "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -18,25 +16,25 @@ import (
 	"k8s.io/client-go/rest"
 )
 
-type MemcachedValidator struct {
+type DormantDatabaseValidator struct {
 	client      kubernetes.Interface
 	extClient   cs.KubedbV1alpha1Interface
 	lock        sync.RWMutex
 	initialized bool
 }
 
-var _ hookapi.AdmissionHook = &MemcachedValidator{}
+var _ hookapi.AdmissionHook = &DormantDatabaseValidator{}
 
-func (a *MemcachedValidator) Resource() (plural schema.GroupVersionResource, singular string) {
+func (a *DormantDatabaseValidator) Resource() (plural schema.GroupVersionResource, singular string) {
 	return schema.GroupVersionResource{
 			Group:    "admission.kubedb.com",
 			Version:  "v1alpha1",
-			Resource: "memcachedreviews",
+			Resource: "dormantdatabasereviews",
 		},
-		"memcachedreview"
+		"dormantdatabasereview"
 }
 
-func (a *MemcachedValidator) Initialize(config *rest.Config, stopCh <-chan struct{}) error {
+func (a *DormantDatabaseValidator) Initialize(config *rest.Config, stopCh <-chan struct{}) error {
 	a.lock.Lock()
 	defer a.lock.Unlock()
 
@@ -52,13 +50,13 @@ func (a *MemcachedValidator) Initialize(config *rest.Config, stopCh <-chan struc
 	return err
 }
 
-func (a *MemcachedValidator) Admit(req *admission.AdmissionRequest) *admission.AdmissionResponse {
+func (a *DormantDatabaseValidator) Admit(req *admission.AdmissionRequest) *admission.AdmissionResponse {
 	status := &admission.AdmissionResponse{}
 
 	if (req.Operation != admission.Create && req.Operation != admission.Update && req.Operation != admission.Delete) ||
 		len(req.SubResource) != 0 ||
 		req.Kind.Group != api.SchemeGroupVersion.Group ||
-		req.Kind.Kind != api.ResourceKindMemcached {
+		req.Kind.Kind != api.ResourceKindDormantDatabase {
 		status.Allowed = true
 		return status
 	}
@@ -71,20 +69,20 @@ func (a *MemcachedValidator) Admit(req *admission.AdmissionRequest) *admission.A
 
 	switch req.Operation {
 	case admission.Delete:
-		// req.Object.Raw = nil, so read from kubernetes
-		obj, err := a.extClient.Memcacheds(req.Namespace).Get(req.Name, metav1.GetOptions{})
-		if err != nil && !kerr.IsNotFound(err) {
-			return hookapi.StatusInternalServerError(err)
-		} else if err == nil && obj.Spec.DoNotPause {
-			return hookapi.StatusBadRequest(fmt.Errorf(`memcached "%s" can't be paused. To continue delete, unset spec.doNotPause and retry`, req.Name))
+		// validate the operation made by User
+		if !util.IsKubeDBOperator(req.UserInfo) {
+			// req.Object.Raw = nil, so read from kubernetes
+			obj, err := a.extClient.DormantDatabases(req.Namespace).Get(req.Name, metav1.GetOptions{})
+			if err != nil && !kerr.IsNotFound(err) {
+				return hookapi.StatusInternalServerError(err)
+			} else if err == nil && obj.Status.Phase != api.DormantDatabasePhaseWipedOut {
+				return hookapi.StatusBadRequest(fmt.Errorf(`dormant_database "%s" can't be delete. To continue delete, set spec.wipeOut true and retry`, req.Name))
+			}
 		}
 	case admission.Create:
-		obj, err := meta.UnmarshalToJSON(req.Object.Raw, api.SchemeGroupVersion)
-		if err != nil {
-			return hookapi.StatusBadRequest(err)
-		}
-		if err = memv.ValidateMemcached(a.client, a.extClient, obj.(*api.Memcached)); err != nil {
-			return hookapi.StatusForbidden(err)
+		if !util.IsKubeDBOperator(req.UserInfo) {
+			// skip validating kubedb-operator
+			return hookapi.StatusBadRequest(fmt.Errorf(`user can't create object with kind dormantdatabase'`))
 		}
 	case admission.Update:
 		if !util.IsKubeDBOperator(req.UserInfo) {
@@ -93,16 +91,7 @@ func (a *MemcachedValidator) Admit(req *admission.AdmissionRequest) *admission.A
 				return hookapi.StatusForbidden(fmt.Errorf("%v", err))
 			}
 		}
-		// validate database specs
-		obj, err := meta.UnmarshalToJSON(req.Object.Raw, api.SchemeGroupVersion)
-		if err != nil {
-			return hookapi.StatusBadRequest(err)
-		}
-		if err = memv.ValidateMemcached(a.client, a.extClient, obj.(*api.Memcached)); err != nil {
-			return hookapi.StatusForbidden(err)
-		}
 	}
-
 	status.Allowed = true
 	return status
 }

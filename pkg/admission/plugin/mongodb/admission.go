@@ -87,7 +87,7 @@ func (a *MongoDBValidator) Admit(req *admission.AdmissionRequest) *admission.Adm
 			return hookapi.StatusForbidden(err)
 		}
 	case admission.Update:
-		if !util.IsKubeDBOperatorUser(req.UserInfo) {
+		if !util.IsKubeDBOperator(req.UserInfo) {
 			// validate changes made by user
 			if err := util.ValidateUpdate(req.Object.Raw, req.OldObject.Raw, req.Kind.Kind); err != nil {
 				return hookapi.StatusForbidden(fmt.Errorf("%v", err))

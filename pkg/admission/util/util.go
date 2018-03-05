@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	meta_util "github.com/appscode/kutil/meta"
 	tapi "github.com/kubedb/apimachinery/apis/kubedb/v1alpha1"
 	"github.com/pkg/errors"
 	authenticationv1 "k8s.io/api/authentication/v1"
@@ -14,11 +15,11 @@ import (
 	apiserver_util "k8s.io/apiserver/pkg/authentication/serviceaccount"
 )
 
-func IsKubeDBOperatorUser(userInfo authenticationv1.UserInfo) bool {
+func IsKubeDBOperator(userInfo authenticationv1.UserInfo) bool {
 	svcAccEnv := os.Getenv("SERVICE_ACCOUNT_NAME")
-	nsEnv := os.Getenv("SERVER_NAMESPACE")
+	nsEnv := meta_util.Namespace()
 
-	if ns, username, err := apiserver_util.SplitUsername(userInfo.Username); err == nil && username == svcAccEnv && ns==nsEnv {
+	if ns, username, err := apiserver_util.SplitUsername(userInfo.Username); err == nil && username == svcAccEnv && ns == nsEnv {
 		return true
 	}
 	return false

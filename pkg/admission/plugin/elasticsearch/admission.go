@@ -9,6 +9,7 @@ import (
 	api "github.com/kubedb/apimachinery/apis/kubedb/v1alpha1"
 	cs "github.com/kubedb/apimachinery/client/clientset/versioned/typed/kubedb/v1alpha1"
 	esv "github.com/kubedb/elasticsearch/pkg/validator"
+	"github.com/kubedb/kubedb-server/pkg/admission/util"
 	admission "k8s.io/api/admission/v1beta1"
 	kerr "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -68,7 +69,8 @@ func (a *ElasticsearchValidator) Admit(req *admission.AdmissionRequest) *admissi
 		return hookapi.StatusUninitialized()
 	}
 
-	if req.Operation == admission.Delete {
+	switch req.Operation {
+	case admission.Delete:
 		// req.Object.Raw = nil, so read from kubernetes
 		obj, err := a.extClient.Elasticsearches(req.Namespace).Get(req.Name, metav1.GetOptions{})
 		if err != nil && !kerr.IsNotFound(err) {
@@ -76,20 +78,30 @@ func (a *ElasticsearchValidator) Admit(req *admission.AdmissionRequest) *admissi
 		} else if err == nil && obj.Spec.DoNotPause {
 			return hookapi.StatusBadRequest(fmt.Errorf(`elasticsearch "%s" can't be paused. To continue, unset spec.doNotPause and retry`, req.Name))
 		}
-		status.Allowed = true
-		return status
+	case admission.Create:
+		obj, err := meta.UnmarshalToJSON(req.Object.Raw, api.SchemeGroupVersion)
+		if err != nil {
+			return hookapi.StatusBadRequest(err)
+		}
+		if err = esv.ValidateElasticsearch(a.client, a.extClient, obj.(*api.Elasticsearch)); err != nil {
+			return hookapi.StatusForbidden(err)
+		}
+	case admission.Update:
+		if !util.IsKubeDBOperator(req.UserInfo) {
+			// validate changes made by user
+			if err := util.ValidateUpdate(req.Object.Raw, req.OldObject.Raw, req.Kind.Kind); err != nil {
+				return hookapi.StatusForbidden(fmt.Errorf("%v", err))
+			}
+		}
+		// validate database specs
+		obj, err := meta.UnmarshalToJSON(req.Object.Raw, api.SchemeGroupVersion)
+		if err != nil {
+			return hookapi.StatusBadRequest(err)
+		}
+		if err = esv.ValidateElasticsearch(a.client, a.extClient, obj.(*api.Elasticsearch)); err != nil {
+			return hookapi.StatusForbidden(err)
+		}
 	}
-
-	obj, err := meta.UnmarshalToJSON(req.Object.Raw, api.SchemeGroupVersion)
-	if err != nil {
-		return hookapi.StatusBadRequest(err)
-	}
-
-	err = esv.ValidateElasticsearch(a.client, a.extClient, obj.(*api.Elasticsearch))
-	if err != nil {
-		return hookapi.StatusForbidden(err)
-	}
-
 	status.Allowed = true
 	return status
 }

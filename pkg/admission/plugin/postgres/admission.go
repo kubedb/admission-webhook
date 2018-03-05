@@ -8,6 +8,7 @@ import (
 	"github.com/appscode/kutil/meta"
 	api "github.com/kubedb/apimachinery/apis/kubedb/v1alpha1"
 	cs "github.com/kubedb/apimachinery/client/clientset/versioned/typed/kubedb/v1alpha1"
+	"github.com/kubedb/kubedb-server/pkg/admission/util"
 	pgv "github.com/kubedb/postgres/pkg/validator"
 	admission "k8s.io/api/admission/v1beta1"
 	kerr "k8s.io/apimachinery/pkg/api/errors"
@@ -68,7 +69,8 @@ func (a *PostgresValidator) Admit(req *admission.AdmissionRequest) *admission.Ad
 		return hookapi.StatusUninitialized()
 	}
 
-	if req.Operation == admission.Delete {
+	switch req.Operation {
+	case admission.Delete:
 		// req.Object.Raw = nil, so read from kubernetes
 		obj, err := a.extClient.Postgreses(req.Namespace).Get(req.Name, metav1.GetOptions{})
 		if err != nil && !kerr.IsNotFound(err) {
@@ -76,18 +78,29 @@ func (a *PostgresValidator) Admit(req *admission.AdmissionRequest) *admission.Ad
 		} else if err == nil && obj.Spec.DoNotPause {
 			return hookapi.StatusBadRequest(fmt.Errorf(`postgres "%s" can't be paused. To continue delete, unset spec.doNotPause and retry`, req.Name))
 		}
-		status.Allowed = true
-		return status
-	}
-
-	obj, err := meta.UnmarshalToJSON(req.Object.Raw, api.SchemeGroupVersion)
-	if err != nil {
-		return hookapi.StatusBadRequest(err)
-	}
-
-	err = pgv.ValidatePostgres(a.client, a.extClient, obj.(*api.Postgres))
-	if err != nil {
-		return hookapi.StatusForbidden(err)
+	case admission.Create:
+		obj, err := meta.UnmarshalToJSON(req.Object.Raw, api.SchemeGroupVersion)
+		if err != nil {
+			return hookapi.StatusBadRequest(err)
+		}
+		if err = pgv.ValidatePostgres(a.client, a.extClient, obj.(*api.Postgres)); err != nil {
+			return hookapi.StatusForbidden(err)
+		}
+	case admission.Update:
+		if !util.IsKubeDBOperator(req.UserInfo) {
+			// validate changes made by user
+			if err := util.ValidateUpdate(req.Object.Raw, req.OldObject.Raw, req.Kind.Kind); err != nil {
+				return hookapi.StatusForbidden(fmt.Errorf("%v", err))
+			}
+		}
+		// validate database specs
+		obj, err := meta.UnmarshalToJSON(req.Object.Raw, api.SchemeGroupVersion)
+		if err != nil {
+			return hookapi.StatusBadRequest(err)
+		}
+		if err = pgv.ValidatePostgres(a.client, a.extClient, obj.(*api.Postgres)); err != nil {
+			return hookapi.StatusForbidden(err)
+		}
 	}
 
 	status.Allowed = true
