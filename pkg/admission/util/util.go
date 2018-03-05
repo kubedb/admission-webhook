@@ -15,16 +15,13 @@ import (
 )
 
 func IsKubeDBOperatorUser(userInfo authenticationv1.UserInfo) bool {
-	svcacc := getServiceAccountName()
-	if username, _, err := apiserver_util.SplitUsername(userInfo.Username); err != nil && username == svcacc {
+	svcAccEnv := os.Getenv("SERVICE_ACCOUNT_NAME")
+	nsEnv := os.Getenv("SERVER_NAMESPACE")
+
+	if ns, username, err := apiserver_util.SplitUsername(userInfo.Username); err == nil && username == svcAccEnv && ns==nsEnv {
 		return true
 	}
 	return false
-}
-
-func getServiceAccountName() string {
-	env := os.Getenv("SERVICE_ACCOUNT_NAME")
-	return env
 }
 
 func ValidateUpdate(modified, oldObj []byte, kind string) error {
@@ -145,7 +142,6 @@ func requireChainKeyUnchanged(key string) mergepatch.PreconditionFunc {
 	}
 }
 
-
 func checkChainKeyUnchanged(key string, mapData map[string]interface{}) bool {
 	keys := strings.Split(key, ".")
 
@@ -185,7 +181,3 @@ func conditionalPreconditionFailedError(kind string) error {
 	return fmt.Errorf(`At least one of the following was changed:
 	%v`, strList)
 }
-
-
-
-

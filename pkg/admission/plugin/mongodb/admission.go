@@ -88,12 +88,11 @@ func (a *MongoDBValidator) Admit(req *admission.AdmissionRequest) *admission.Adm
 		}
 	case admission.Update:
 		if !util.IsKubeDBOperatorUser(req.UserInfo) {
-			// deny users from making improper changes.
+			// validate changes made by user
 			if err := util.ValidateUpdate(req.Object.Raw, req.OldObject.Raw, req.Kind.Kind); err != nil {
 				return hookapi.StatusForbidden(fmt.Errorf("%v", err))
 			}
 		}
-
 		// validate database specs
 		obj, err := meta.UnmarshalToJSON(req.Object.Raw, api.SchemeGroupVersion)
 		if err != nil {
