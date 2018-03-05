@@ -1,7 +1,6 @@
 package mongodb
 
 import (
-	"encoding/json"
 	"fmt"
 	"sync"
 
@@ -70,8 +69,6 @@ func (a *MongoDBValidator) Admit(req *admission.AdmissionRequest) *admission.Adm
 		return hookapi.StatusUninitialized()
 	}
 
-	str, _ := json.MarshalIndent(req, "", "    ")
-
 	switch req.Operation {
 	case admission.Delete:
 		// req.Object.Raw = nil, so read from kubernetes
@@ -90,8 +87,20 @@ func (a *MongoDBValidator) Admit(req *admission.AdmissionRequest) *admission.Adm
 			return hookapi.StatusForbidden(err)
 		}
 	case admission.Update:
-		if err := util.ValidateUpdate(req.Object.Raw, req.OldObject.Raw, req.Kind.Kind); err != nil {
-			return hookapi.StatusForbidden(fmt.Errorf("%v %v", string(str), err))
+		if !util.IsKubeDBOperatorUser(req.UserInfo) {
+			// deny users from making improper changes.
+			if err := util.ValidateUpdate(req.Object.Raw, req.OldObject.Raw, req.Kind.Kind); err != nil {
+				return hookapi.StatusForbidden(fmt.Errorf("%v", err))
+			}
+		}
+
+		// validate database specs
+		obj, err := meta.UnmarshalToJSON(req.Object.Raw, api.SchemeGroupVersion)
+		if err != nil {
+			return hookapi.StatusBadRequest(err)
+		}
+		if err = mgv.ValidateMongoDB(a.client, a.extClient, obj.(*api.MongoDB)); err != nil {
+			return hookapi.StatusForbidden(err)
 		}
 	}
 	status.Allowed = true

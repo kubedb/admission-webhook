@@ -2,48 +2,49 @@ package util
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	tapi "github.com/kubedb/apimachinery/apis/kubedb/v1alpha1"
 	"github.com/pkg/errors"
+	authenticationv1 "k8s.io/api/authentication/v1"
 	"k8s.io/apimachinery/pkg/util/json"
 	"k8s.io/apimachinery/pkg/util/jsonmergepatch"
 	"k8s.io/apimachinery/pkg/util/mergepatch"
+	apiserver_util "k8s.io/apiserver/pkg/authentication/serviceaccount"
 )
 
-func checkChainKeyUnchanged(key string, mapData map[string]interface{}) bool {
-	keys := strings.Split(key, ".")
-
-	newKey := strings.Join(keys[1:], ".")
-	if keys[0] == "*" {
-		if len(keys) == 1 {
-			return true
-		}
-		for _, val := range mapData {
-			if !checkChainKeyUnchanged(newKey, val.(map[string]interface{})) {
-				return false
-			}
-		}
-	} else {
-		val, ok := mapData[keys[0]]
-		if !ok || len(keys) == 1 {
-			return !ok
-		}
-		return checkChainKeyUnchanged(newKey, val.(map[string]interface{}))
+func IsKubeDBOperatorUser(userInfo authenticationv1.UserInfo) bool {
+	svcacc := getServiceAccountName()
+	if username, _, err := apiserver_util.SplitUsername(userInfo.Username); err != nil && username == svcacc {
+		return true
 	}
-
-	return true
+	return false
 }
 
-func requireChainKeyUnchanged(key string) mergepatch.PreconditionFunc {
-	return func(patch interface{}) bool {
-		patchMap, ok := patch.(map[string]interface{})
-		if !ok {
-			fmt.Println("Invalid data")
-			return true
+func getServiceAccountName() string {
+	env := os.Getenv("SERVICE_ACCOUNT_NAME")
+	return env
+}
+
+func ValidateUpdate(modified, oldObj []byte, kind string) error {
+	preconditions := getPreconditionFunc(kind)
+	patch, err := jsonmergepatch.CreateThreeWayJSONMergePatch(oldObj, modified, oldObj, preconditions...)
+	if err != nil {
+		if mergepatch.IsPreconditionFailed(err) {
+			return preconditionFailedError()
 		}
-		return checkChainKeyUnchanged(key, patchMap)
+		return err
 	}
+
+	conditionalPreconditions := getConditionalPreconditionFunc(kind)
+	if err = checkConditionalPrecondition(patch, conditionalPreconditions...); err != nil {
+		if mergepatch.IsPreconditionFailed(err) {
+			return conditionalPreconditionFailedError(kind)
+		}
+		return err
+	}
+	return nil
 }
 
 func getPreconditionFunc(kind string) []mergepatch.PreconditionFunc {
@@ -52,6 +53,7 @@ func getPreconditionFunc(kind string) []mergepatch.PreconditionFunc {
 		mergepatch.RequireKeyUnchanged("kind"),
 		mergepatch.RequireMetadataKeyUnchanged("name"),
 		mergepatch.RequireMetadataKeyUnchanged("namespace"),
+		mergepatch.RequireKeyUnchanged("status"),
 	}
 	return preconditions
 }
@@ -87,6 +89,7 @@ var preconditionSpecField = map[string][]string{
 	tapi.ResourceKindMongoDB: {
 		"spec.version",
 		"spec.storage",
+		"spec.databaseSecret",
 		"spec.nodeSelector",
 		"spec.init",
 	},
@@ -131,12 +134,49 @@ func checkConditionalPrecondition(patchData []byte, fns ...mergepatch.Preconditi
 	return nil
 }
 
+func requireChainKeyUnchanged(key string) mergepatch.PreconditionFunc {
+	return func(patch interface{}) bool {
+		patchMap, ok := patch.(map[string]interface{})
+		if !ok {
+			fmt.Println("Invalid data")
+			return true
+		}
+		return checkChainKeyUnchanged(key, patchMap)
+	}
+}
+
+
+func checkChainKeyUnchanged(key string, mapData map[string]interface{}) bool {
+	keys := strings.Split(key, ".")
+
+	newKey := strings.Join(keys[1:], ".")
+	if keys[0] == "*" {
+		if len(keys) == 1 {
+			return true
+		}
+		for _, val := range mapData {
+			if !checkChainKeyUnchanged(newKey, val.(map[string]interface{})) {
+				return false
+			}
+		}
+	} else {
+		val, ok := mapData[keys[0]]
+		if !ok || len(keys) == 1 {
+			return !ok
+		}
+		return checkChainKeyUnchanged(newKey, val.(map[string]interface{}))
+	}
+
+	return true
+}
+
 func preconditionFailedError() error {
 	return errors.New(`At least one of the following was changed:
 	apiVersion
 	kind
 	name
-	namespace`)
+	namespace
+	status`)
 }
 
 func conditionalPreconditionFailedError(kind string) error {
@@ -146,22 +186,6 @@ func conditionalPreconditionFailedError(kind string) error {
 	%v`, strList)
 }
 
-func ValidateUpdate(modified, oldObj []byte, kind string) error {
-	preconditions := getPreconditionFunc(kind)
-	patch, err := jsonmergepatch.CreateThreeWayJSONMergePatch(oldObj, modified, oldObj, preconditions...)
-	if err != nil {
-		if mergepatch.IsPreconditionFailed(err) {
-			return preconditionFailedError()
-		}
-		return err
-	}
 
-	conditionalPreconditions := getConditionalPreconditionFunc(kind)
-	if err = checkConditionalPrecondition(patch, conditionalPreconditions...); err != nil {
-		if mergepatch.IsPreconditionFailed(err) {
-			return conditionalPreconditionFailedError(kind)
-		}
-		return err
-	}
-	return nil
-}
+
+
