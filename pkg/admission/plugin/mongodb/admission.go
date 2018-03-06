@@ -7,7 +7,7 @@ import (
 	hookapi "github.com/appscode/kutil/admission/api"
 	"github.com/appscode/kutil/meta"
 	api "github.com/kubedb/apimachinery/apis/kubedb/v1alpha1"
-	cs "github.com/kubedb/apimachinery/client/clientset/versioned/typed/kubedb/v1alpha1"
+	cs "github.com/kubedb/apimachinery/client/clientset/versioned"
 	"github.com/kubedb/kubedb-server/pkg/admission/util"
 	mgv "github.com/kubedb/mongodb/pkg/validator"
 	admission "k8s.io/api/admission/v1beta1"
@@ -20,7 +20,7 @@ import (
 
 type MongoDBValidator struct {
 	client      kubernetes.Interface
-	extClient   cs.KubedbV1alpha1Interface
+	extClient   cs.Interface
 	lock        sync.RWMutex
 	initialized bool
 }
@@ -72,7 +72,7 @@ func (a *MongoDBValidator) Admit(req *admission.AdmissionRequest) *admission.Adm
 	switch req.Operation {
 	case admission.Delete:
 		// req.Object.Raw = nil, so read from kubernetes
-		obj, err := a.extClient.MongoDBs(req.Namespace).Get(req.Name, metav1.GetOptions{})
+		obj, err := a.extClient.KubedbV1alpha1().MongoDBs(req.Namespace).Get(req.Name, metav1.GetOptions{})
 		if err != nil && !kerr.IsNotFound(err) {
 			return hookapi.StatusInternalServerError(err)
 		} else if err == nil && obj.Spec.DoNotPause {
@@ -83,7 +83,7 @@ func (a *MongoDBValidator) Admit(req *admission.AdmissionRequest) *admission.Adm
 		if err != nil {
 			return hookapi.StatusBadRequest(err)
 		}
-		if err = mgv.ValidateMongoDB(a.client, a.extClient, obj.(*api.MongoDB)); err != nil {
+		if err = mgv.ValidateMongoDB(a.client, a.extClient.KubedbV1alpha1(), obj.(*api.MongoDB)); err != nil {
 			return hookapi.StatusForbidden(err)
 		}
 	case admission.Update:
@@ -98,7 +98,7 @@ func (a *MongoDBValidator) Admit(req *admission.AdmissionRequest) *admission.Adm
 		if err != nil {
 			return hookapi.StatusBadRequest(err)
 		}
-		if err = mgv.ValidateMongoDB(a.client, a.extClient, obj.(*api.MongoDB)); err != nil {
+		if err = mgv.ValidateMongoDB(a.client, a.extClient.KubedbV1alpha1(), obj.(*api.MongoDB)); err != nil {
 			return hookapi.StatusForbidden(err)
 		}
 	}
