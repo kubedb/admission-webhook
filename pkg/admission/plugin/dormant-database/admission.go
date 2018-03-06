@@ -82,7 +82,7 @@ func (a *DormantDatabaseValidator) Admit(req *admission.AdmissionRequest) *admis
 	case admission.Create:
 		if !util.IsKubeDBOperator(req.UserInfo) {
 			// skip validating kubedb-operator
-			return hookapi.StatusBadRequest(fmt.Errorf(`user can't create object with kind dormantdatabase'`))
+			return hookapi.StatusBadRequest(fmt.Errorf(`user can't create object of Kind dormantdatabase'`))
 		}
 	case admission.Update:
 		if !util.IsKubeDBOperator(req.UserInfo) {
