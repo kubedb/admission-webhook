@@ -6,7 +6,7 @@ import (
 
 	hookapi "github.com/appscode/kutil/admission/api"
 	api "github.com/kubedb/apimachinery/apis/kubedb/v1alpha1"
-	cs "github.com/kubedb/apimachinery/client/clientset/versioned/typed/kubedb/v1alpha1"
+	cs "github.com/kubedb/apimachinery/client/clientset/versioned"
 	"github.com/kubedb/kubedb-server/pkg/admission/util"
 	admission "k8s.io/api/admission/v1beta1"
 	kerr "k8s.io/apimachinery/pkg/api/errors"
@@ -18,7 +18,7 @@ import (
 
 type DormantDatabaseValidator struct {
 	client      kubernetes.Interface
-	extClient   cs.KubedbV1alpha1Interface
+	extClient   cs.Interface
 	lock        sync.RWMutex
 	initialized bool
 }
@@ -72,21 +72,21 @@ func (a *DormantDatabaseValidator) Admit(req *admission.AdmissionRequest) *admis
 		// validate the operation made by User
 		if !util.IsKubeDBOperator(req.UserInfo) {
 			// req.Object.Raw = nil, so read from kubernetes
-			obj, err := a.extClient.DormantDatabases(req.Namespace).Get(req.Name, metav1.GetOptions{})
+			obj, err := a.extClient.KubedbV1alpha1().DormantDatabases(req.Namespace).Get(req.Name, metav1.GetOptions{})
 			if err != nil && !kerr.IsNotFound(err) {
 				return hookapi.StatusInternalServerError(err)
 			} else if err == nil && obj.Status.Phase != api.DormantDatabasePhaseWipedOut {
-				return hookapi.StatusBadRequest(fmt.Errorf(`dormant_database "%s" can't be delete. To continue delete, set spec.wipeOut true and retry`, req.Name))
+				return hookapi.StatusBadRequest(fmt.Errorf(`dormant_database "%s" is not wipedOut. `, req.Name))
 			}
 		}
 	case admission.Create:
+		// validate the operation made by User
 		if !util.IsKubeDBOperator(req.UserInfo) {
-			// skip validating kubedb-operator
-			return hookapi.StatusBadRequest(fmt.Errorf(`user can't create object of Kind dormantdatabase'`))
+			return hookapi.StatusBadRequest(fmt.Errorf(`user can't create object of Kind dormantdatabase`))
 		}
 	case admission.Update:
+		// validate the operation made by User
 		if !util.IsKubeDBOperator(req.UserInfo) {
-			// validate changes made by user
 			if err := util.ValidateUpdate(req.Object.Raw, req.OldObject.Raw, req.Kind.Kind); err != nil {
 				return hookapi.StatusForbidden(fmt.Errorf("%v", err))
 			}

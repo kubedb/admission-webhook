@@ -15,8 +15,12 @@ import (
 	apiserver_util "k8s.io/apiserver/pkg/authentication/serviceaccount"
 )
 
+var (
+	EnvSvcAccountName = "SERVICE_ACCOUNT_NAME"
+)
+
 func IsKubeDBOperator(userInfo authenticationv1.UserInfo) bool {
-	svcAccEnv := os.Getenv("SERVICE_ACCOUNT_NAME")
+	svcAccEnv := os.Getenv(EnvSvcAccountName)
 	nsEnv := meta_util.Namespace()
 
 	if ns, username, err := apiserver_util.SplitUsername(userInfo.Username); err == nil && username == svcAccEnv && ns == nsEnv {
