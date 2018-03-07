@@ -6,11 +6,9 @@ import (
 	"strings"
 
 	meta_util "github.com/appscode/kutil/meta"
-	tapi "github.com/kubedb/apimachinery/apis/kubedb/v1alpha1"
-	"github.com/pkg/errors"
+	api "github.com/kubedb/apimachinery/apis/kubedb/v1alpha1"
 	authenticationv1 "k8s.io/api/authentication/v1"
-	"k8s.io/apimachinery/pkg/util/json"
-	"k8s.io/apimachinery/pkg/util/jsonmergepatch"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/mergepatch"
 	apiserver_util "k8s.io/apiserver/pkg/authentication/serviceaccount"
 )
@@ -29,20 +27,12 @@ func IsKubeDBOperator(userInfo authenticationv1.UserInfo) bool {
 	return false
 }
 
-func ValidateUpdate(modified, oldObj []byte, kind string) error {
+func ValidateUpdate(obj, oldObj runtime.Object, kind string) error {
 	preconditions := getPreconditionFunc(kind)
-	patch, err := jsonmergepatch.CreateThreeWayJSONMergePatch(oldObj, modified, oldObj, preconditions...)
+	_, err := meta_util.CreateStrategicPatch(oldObj, obj, preconditions...)
 	if err != nil {
 		if mergepatch.IsPreconditionFailed(err) {
-			return preconditionFailedError()
-		}
-		return err
-	}
-
-	conditionalPreconditions := getConditionalPreconditionFunc(kind)
-	if err = checkConditionalPrecondition(patch, conditionalPreconditions...); err != nil {
-		if mergepatch.IsPreconditionFailed(err) {
-			return conditionalPreconditionFailedError(kind)
+			return preconditionFailedError(kind)
 		}
 		return err
 	}
@@ -57,11 +47,19 @@ func getPreconditionFunc(kind string) []mergepatch.PreconditionFunc {
 		mergepatch.RequireMetadataKeyUnchanged("namespace"),
 		mergepatch.RequireKeyUnchanged("status"),
 	}
+
+	if fields, found := preconditionSpecField[kind]; found {
+		for _, field := range fields {
+			preconditions = append(preconditions,
+				meta_util.RequireChainKeyUnchanged(field),
+			)
+		}
+	}
 	return preconditions
 }
 
 var preconditionSpecField = map[string][]string{
-	tapi.ResourceKindElasticsearch: {
+	api.ResourceKindElasticsearch: {
 		"spec.version",
 		"spec.topology.*.prefix",
 		"spec.enableSSL",
@@ -71,7 +69,7 @@ var preconditionSpecField = map[string][]string{
 		"spec.nodeSelector",
 		"spec.init",
 	},
-	tapi.ResourceKindPostgres: {
+	api.ResourceKindPostgres: {
 		"spec.version",
 		"spec.standby",
 		"spec.streaming",
@@ -81,108 +79,42 @@ var preconditionSpecField = map[string][]string{
 		"spec.nodeSelector",
 		"spec.init",
 	},
-	tapi.ResourceKindMySQL: {
+	api.ResourceKindMySQL: {
 		"spec.version",
 		"spec.storage",
 		"spec.databaseSecret",
 		"spec.nodeSelector",
 		"spec.init",
 	},
-	tapi.ResourceKindMongoDB: {
+	api.ResourceKindMongoDB: {
 		"spec.version",
 		"spec.storage",
 		"spec.databaseSecret",
 		"spec.nodeSelector",
 		"spec.init",
 	},
-	tapi.ResourceKindRedis: {
+	api.ResourceKindRedis: {
 		"spec.version",
 		"spec.storage",
 		"spec.nodeSelector",
 	},
-	tapi.ResourceKindMemcached: {
+	api.ResourceKindMemcached: {
 		"spec.version",
 		"spec.nodeSelector",
 	},
-	tapi.ResourceKindDormantDatabase: {
+	api.ResourceKindDormantDatabase: {
 		"spec.origin",
 	},
 }
 
-func getConditionalPreconditionFunc(kind string) []mergepatch.PreconditionFunc {
-	preconditions := make([]mergepatch.PreconditionFunc, 0)
-
-	if fields, found := preconditionSpecField[kind]; found {
-		for _, field := range fields {
-			preconditions = append(preconditions,
-				requireChainKeyUnchanged(field),
-			)
-		}
-	}
-
-	return preconditions
-}
-
-func checkConditionalPrecondition(patchData []byte, fns ...mergepatch.PreconditionFunc) error {
-	patch := make(map[string]interface{})
-	if err := json.Unmarshal(patchData, &patch); err != nil {
-		return err
-	}
-	for _, fn := range fns {
-		if !fn(patch) {
-			return mergepatch.NewErrPreconditionFailed(patch)
-		}
-	}
-	return nil
-}
-
-func requireChainKeyUnchanged(key string) mergepatch.PreconditionFunc {
-	return func(patch interface{}) bool {
-		patchMap, ok := patch.(map[string]interface{})
-		if !ok {
-			fmt.Println("Invalid data")
-			return true
-		}
-		return checkChainKeyUnchanged(key, patchMap)
-	}
-}
-
-func checkChainKeyUnchanged(key string, mapData map[string]interface{}) bool {
-	keys := strings.Split(key, ".")
-
-	newKey := strings.Join(keys[1:], ".")
-	if keys[0] == "*" {
-		if len(keys) == 1 {
-			return true
-		}
-		for _, val := range mapData {
-			if !checkChainKeyUnchanged(newKey, val.(map[string]interface{})) {
-				return false
-			}
-		}
-	} else {
-		val, ok := mapData[keys[0]]
-		if !ok || len(keys) == 1 {
-			return !ok
-		}
-		return checkChainKeyUnchanged(newKey, val.(map[string]interface{}))
-	}
-
-	return true
-}
-
-func preconditionFailedError() error {
-	return errors.New(`At least one of the following was changed:
+func preconditionFailedError(kind string) error {
+	str := preconditionSpecField[kind]
+	strList := strings.Join(str, "\n\t")
+	return fmt.Errorf(`At least one of the following was changed:
 	apiVersion
 	kind
 	name
 	namespace
-	status`)
-}
-
-func conditionalPreconditionFailedError(kind string) error {
-	str := preconditionSpecField[kind]
-	strList := strings.Join(str, "\n\t")
-	return fmt.Errorf(`At least one of the following was changed:
-	%v`, strList)
+	status
+    %v`, strList)
 }

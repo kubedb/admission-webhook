@@ -6,6 +6,7 @@ import (
 
 	hookapi "github.com/appscode/kutil/admission/api"
 	"github.com/appscode/kutil/meta"
+	meta_util "github.com/appscode/kutil/meta"
 	api "github.com/kubedb/apimachinery/apis/kubedb/v1alpha1"
 	cs "github.com/kubedb/apimachinery/client/clientset/versioned"
 	"github.com/kubedb/kubedb-server/pkg/admission/util"
@@ -89,7 +90,15 @@ func (a *PostgresValidator) Admit(req *admission.AdmissionRequest) *admission.Ad
 	case admission.Update:
 		if !util.IsKubeDBOperator(req.UserInfo) {
 			// validate changes made by user
-			if err := util.ValidateUpdate(req.Object.Raw, req.OldObject.Raw, req.Kind.Kind); err != nil {
+			obj, err := meta_util.UnmarshalToJSON(req.Object.Raw, api.SchemeGroupVersion)
+			if err != nil {
+				return hookapi.StatusBadRequest(err)
+			}
+			OldObj, err := meta_util.UnmarshalToJSON(req.OldObject.Raw, api.SchemeGroupVersion)
+			if err != nil {
+				return hookapi.StatusBadRequest(err)
+			}
+			if err := util.ValidateUpdate(obj, OldObj, req.Kind.Kind); err != nil {
 				return hookapi.StatusForbidden(fmt.Errorf("%v", err))
 			}
 		}
