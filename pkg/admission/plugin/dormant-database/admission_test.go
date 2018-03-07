@@ -12,7 +12,9 @@ import (
 	"github.com/kubedb/kubedb-server/pkg/admission/util"
 	admission "k8s.io/api/admission/v1beta1"
 	authenticationv1 "k8s.io/api/authentication/v1"
+	kerr "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/fake"
 	clientsetscheme "k8s.io/client-go/kubernetes/scheme"
 )
@@ -20,6 +22,7 @@ import (
 func init() {
 	scheme.AddToScheme(clientsetscheme.Scheme)
 	os.Setenv(util.EnvSvcAccountName, "kubedb-operator")
+	os.Setenv("KUBE_NAMESPACE", "kube-system")
 }
 
 func (a *DormantDatabaseValidator) _initialize() error {
@@ -33,294 +36,234 @@ func (a *DormantDatabaseValidator) _initialize() error {
 	return nil
 }
 
-func initialReq() admission.AdmissionRequest {
-	return admission.AdmissionRequest{
-		Kind: metav1.GroupVersionKind{
-			Group:   api.SchemeGroupVersion.Group,
-			Version: api.SchemeGroupVersion.Version,
-			Kind:    api.ResourceKindDormantDatabase,
+var requestKind = metav1.GroupVersionKind{
+	Group:   api.SchemeGroupVersion.Group,
+	Version: api.SchemeGroupVersion.Version,
+	Kind:    api.ResourceKindDormantDatabase,
+}
+
+func TestDormantDatabaseValidator_Admit(t *testing.T) {
+	object := validDormantDatabase()
+
+	cases := []struct {
+		testName   string
+		kind       metav1.GroupVersionKind
+		objectName string
+		namespace  string
+		operation  admission.Operation
+		userInfo   authenticationv1.UserInfo
+		object     api.DormantDatabase
+		oldObject  api.DormantDatabase
+		heatUp     bool
+		result     bool
+	}{
+		{"Create Dormant Database By Operator",
+			requestKind,
+			"foo",
+			"default",
+			admission.Create,
+			userIsOperator(),
+			object,
+			api.DormantDatabase{},
+			false,
+			true,
+		},
+		{"Create Dormant Database By User",
+			requestKind,
+			"foo",
+			"default",
+			admission.Create,
+			userIsHooman(),
+			object,
+			api.DormantDatabase{},
+			false,
+			false,
+		},
+		{"Edit Status By Operator",
+			requestKind,
+			"foo",
+			"default",
+			admission.Update,
+			userIsOperator(),
+			editStatus(object),
+			object,
+			false,
+			true,
+		},
+		{"Edit Status By User",
+			requestKind,
+			"foo",
+			"default",
+			admission.Update,
+			userIsHooman(),
+			editStatus(object),
+			object,
+			false,
+			false,
+		},
+		{"Edit Spec.Origin By User",
+			requestKind,
+			"foo",
+			"default",
+			admission.Update,
+			userIsHooman(),
+			editSpecOrigin(object),
+			object,
+			false,
+			false,
+		},
+		{"Edit Spec.Resume By Operator",
+			requestKind,
+			"foo",
+			"default",
+			admission.Update,
+			userIsOperator(),
+			editSpecResume(object),
+			object,
+			false,
+			true,
+		},
+		{"Edit Spec.Resume By User",
+			requestKind,
+			"foo",
+			"default",
+			admission.Update,
+			userIsHooman(),
+			editSpecResume(object),
+			object,
+			false,
+			true,
+		},
+		{"Edit Spec.WipeOut By Operator",
+			requestKind,
+			"foo",
+			"default",
+			admission.Update,
+			userIsOperator(),
+			editSpecWipeOut(object),
+			object,
+			false,
+			true,
+		},
+		{"Edit Spec.WipeOut By User",
+			requestKind,
+			"foo",
+			"default",
+			admission.Update,
+			userIsHooman(),
+			editSpecWipeOut(object),
+			object,
+			false,
+			true,
+		},
+		{"Delete Without Wiping By Operator",
+			requestKind,
+			"foo",
+			"default",
+			admission.Delete,
+			userIsOperator(),
+			object,
+			api.DormantDatabase{},
+			true,
+			true,
+		},
+		{"Delete Without Wiping By User",
+			requestKind,
+			"foo",
+			"default",
+			admission.Delete,
+			userIsHooman(),
+			object,
+			api.DormantDatabase{},
+			true,
+			false,
+		},
+		{"Delete With Wiping By User",
+			requestKind,
+			"foo",
+			"default",
+			admission.Delete,
+			userIsHooman(),
+			editStatusWipedOut(object),
+			api.DormantDatabase{},
+			true,
+			true,
+		},
+		{"Delete Non Existing Dormant By Operator",
+			requestKind,
+			"foo",
+			"default",
+			admission.Delete,
+			userIsOperator(),
+			api.DormantDatabase{},
+			api.DormantDatabase{},
+			false,
+			true,
+		},
+		{"Delete Non Existing Dormant By User",
+			requestKind,
+			"foo",
+			"default",
+			admission.Delete,
+			userIsHooman(),
+			api.DormantDatabase{},
+			api.DormantDatabase{},
+			false,
+			true,
 		},
 	}
-}
 
-func initialReqWithObj() admission.AdmissionRequest {
-	req := admission.AdmissionRequest{
-		Kind: metav1.GroupVersionKind{
-			Group:   api.SchemeGroupVersion.Group,
-			Version: api.SchemeGroupVersion.Version,
-			Kind:    api.ResourceKindDormantDatabase,
-		},
+	for _, c := range cases {
+		t.Run(c.testName, func(t *testing.T) {
+			validator := DormantDatabaseValidator{}
+			validator._initialize()
+
+			objJS, err := meta.MarshalToJson(&c.object, api.SchemeGroupVersion)
+			if err != nil {
+				panic(err)
+			}
+			oldObjJS, err := meta.MarshalToJson(&c.oldObject, api.SchemeGroupVersion)
+			if err != nil {
+				panic(err)
+			}
+
+			req := new(admission.AdmissionRequest)
+
+			req.Kind = c.kind
+			req.Name = c.objectName
+			req.Namespace = c.namespace
+			req.Operation = c.operation
+			req.UserInfo = c.userInfo
+			req.Object.Raw = objJS
+			req.OldObject.Raw = oldObjJS
+
+			if c.heatUp {
+
+				if _, err := validator.extClient.KubedbV1alpha1().DormantDatabases(c.namespace).Create(&c.object); err != nil && !kerr.IsAlreadyExists(err) {
+					t.Errorf(err.Error())
+				}
+			}
+			if c.operation == admission.Delete {
+				req.Object = runtime.RawExtension{}
+			}
+			if c.operation != admission.Update {
+				req.OldObject = runtime.RawExtension{}
+			}
+
+			response := validator.Admit(req)
+
+			if c.result == true {
+				if response.Allowed != true {
+					t.Errorf("expected: 'Allowed=true'. but got response: %v", response)
+				}
+			} else if c.result == false {
+				if response.Allowed == true || response.Result.Code == http.StatusInternalServerError {
+					t.Errorf("expected: 'Allowed=false', but got response: %v", response)
+				}
+			}
+		})
 	}
 
-	obj := validDormantDatabase()
-	objJS, err := meta.MarshalToJson(&obj, api.SchemeGroupVersion)
-	if err != nil {
-		panic(err)
-	}
-	req.Object.Raw = objJS
-	return req
-}
-
-func TestDormantDatabaseValidator_Admit_CreateDormantDatabaseByOperator(t *testing.T) {
-	validator := DormantDatabaseValidator{}
-	validator._initialize()
-
-	req := initialReqWithObj()
-	req.Operation = admission.Create
-	req.UserInfo = userIsOperator()
-
-	response := validator.Admit(&req)
-	if response.Allowed != true {
-		t.Errorf("expected: 'Allowed=true'. but got response: %v", response)
-	}
-}
-
-func TestDormantDatabaseValidator_Admit_CreateDormantDatabaseByUser(t *testing.T) {
-	validator := DormantDatabaseValidator{}
-	validator._initialize()
-
-	req := initialReqWithObj()
-	req.Operation = admission.Create
-	req.UserInfo = userIsHooman()
-
-	response := validator.Admit(&req)
-	if response.Allowed == true || response.Result.Code == http.StatusInternalServerError {
-		t.Errorf("expected: 'Allowed=false'. but got response: %v", response)
-	}
-}
-
-func TestDormantDatabaseValidator_Admit_EditStatusByOperator(t *testing.T) {
-	validator := DormantDatabaseValidator{}
-	validator._initialize()
-
-	req := initialReqWithObj()
-	req.Operation = admission.Update
-	req.UserInfo = userIsOperator()
-
-	oldObj := editStatus(validDormantDatabase())
-	oldObjJS, err := meta.MarshalToJson(&oldObj, api.SchemeGroupVersion)
-	if err != nil {
-		t.Errorf(err.Error())
-	}
-	req.OldObject.Raw = oldObjJS
-
-	response := validator.Admit(&req)
-	if response.Allowed != true {
-		t.Errorf("expected: 'Allowed=true'. but got response: %v", response)
-	}
-}
-
-func TestDormantDatabaseValidator_Admit_EditStatusByUser(t *testing.T) {
-	validator := DormantDatabaseValidator{}
-	validator._initialize()
-
-	req := initialReqWithObj()
-	req.Operation = admission.Update
-	req.UserInfo = userIsHooman()
-
-	oldObj := editStatus(validDormantDatabase())
-	oldObjJS, err := meta.MarshalToJson(&oldObj, api.SchemeGroupVersion)
-	if err != nil {
-		t.Errorf(err.Error())
-	}
-	req.OldObject.Raw = oldObjJS
-
-	response := validator.Admit(&req)
-	if response.Allowed == true || response.Result.Code == http.StatusInternalServerError {
-		t.Errorf("expected: 'Allowed=false', but got response: %v", response)
-	}
-}
-
-func TestDormantDatabaseValidator_Admit_EditSpecOriginByUser(t *testing.T) {
-	validator := DormantDatabaseValidator{}
-	validator._initialize()
-
-	req := initialReqWithObj()
-	req.Operation = admission.Update
-	req.UserInfo = userIsHooman()
-
-	oldObj := editSpecOrigin(validDormantDatabase())
-	oldObjJS, err := meta.MarshalToJson(&oldObj, api.SchemeGroupVersion)
-	if err != nil {
-		t.Errorf(err.Error())
-	}
-	req.OldObject.Raw = oldObjJS
-
-	response := validator.Admit(&req)
-	if response.Allowed == true || response.Result.Code == http.StatusInternalServerError {
-		t.Errorf("expected: 'Allowed=false'. but got response: %v", response)
-	}
-}
-
-func TestDormantDatabaseValidator_Admit_EditSpecResumeByOperator(t *testing.T) {
-	validator := DormantDatabaseValidator{}
-	validator._initialize()
-
-	req := initialReqWithObj()
-	req.Operation = admission.Update
-	req.UserInfo = userIsOperator()
-
-	oldObj := editSpecResume(validDormantDatabase())
-	oldObjJS, err := meta.MarshalToJson(&oldObj, api.SchemeGroupVersion)
-	if err != nil {
-		t.Errorf(err.Error())
-	}
-	req.OldObject.Raw = oldObjJS
-
-	response := validator.Admit(&req)
-	if response.Allowed != true {
-		t.Errorf("expected: 'Allowed=true'. but got response: %v", response)
-	}
-}
-
-func TestDormantDatabaseValidator_Admit_EditSpecResumeByUser(t *testing.T) {
-	validator := DormantDatabaseValidator{}
-	validator._initialize()
-
-	req := initialReqWithObj()
-	req.Operation = admission.Update
-	req.UserInfo = userIsHooman()
-
-	oldObj := editSpecResume(validDormantDatabase())
-	oldObjJS, err := meta.MarshalToJson(&oldObj, api.SchemeGroupVersion)
-	if err != nil {
-		t.Errorf(err.Error())
-	}
-	req.OldObject.Raw = oldObjJS
-
-	response := validator.Admit(&req)
-	if response.Allowed != true {
-		t.Errorf("expected: 'Allowed=true'. but got response: %v", response)
-	}
-}
-
-func TestDormantDatabaseValidator_Admit_EditSpecWipeOutByOperator(t *testing.T) {
-	validator := DormantDatabaseValidator{}
-	validator._initialize()
-
-	req := initialReqWithObj()
-	req.Operation = admission.Update
-	req.UserInfo = userIsOperator()
-
-	oldObj := editSpecWipeOut(validDormantDatabase())
-	oldObjJS, err := meta.MarshalToJson(&oldObj, api.SchemeGroupVersion)
-	if err != nil {
-		t.Errorf(err.Error())
-	}
-	req.OldObject.Raw = oldObjJS
-
-	response := validator.Admit(&req)
-	if response.Allowed != true {
-		t.Errorf("expected: 'Allowed=true'. but got response: %v", response)
-	}
-}
-
-func TestDormantDatabaseValidator_Admit_EditSpecWipeOutByUser(t *testing.T) {
-	validator := DormantDatabaseValidator{}
-	validator._initialize()
-
-	req := initialReqWithObj()
-	req.Operation = admission.Update
-	req.UserInfo = userIsHooman()
-
-	oldObj := editSpecWipeOut(validDormantDatabase())
-	oldObjJS, err := meta.MarshalToJson(&oldObj, api.SchemeGroupVersion)
-	if err != nil {
-		t.Errorf(err.Error())
-	}
-	req.OldObject.Raw = oldObjJS
-
-	response := validator.Admit(&req)
-	if response.Allowed != true {
-		t.Errorf("expected: 'Allowed=true'. but got response: %v", response)
-	}
-}
-
-func TestDormantDatabaseValidator_Admit_DeleteWithoutWipingByOperator(t *testing.T) {
-	validator := DormantDatabaseValidator{}
-	validator._initialize()
-
-	obj := validDormantDatabase()
-	if _, err := validator.extClient.KubedbV1alpha1().DormantDatabases("default").Create(&obj); err != nil {
-		t.Errorf(err.Error())
-	}
-
-	req := initialReq()
-	req.Operation = admission.Delete
-	req.UserInfo = userIsOperator()
-
-	response := validator.Admit(&req)
-	if response.Allowed != true {
-		t.Errorf("expected: 'Allowed=true'. but got response: %v", response)
-	}
-}
-
-func TestDormantDatabaseValidator_Admit_DeleteWithoutWipingByUser(t *testing.T) {
-	validator := DormantDatabaseValidator{}
-	validator._initialize()
-
-	obj := validDormantDatabase()
-	if _, err := validator.extClient.KubedbV1alpha1().DormantDatabases("default").Create(&obj); err != nil {
-		t.Errorf(err.Error())
-	}
-
-	req := initialReq()
-	req.Operation = admission.Delete
-	req.UserInfo = userIsHooman()
-
-	response := validator.Admit(&req)
-	if response.Allowed == true || response.Result.Code == http.StatusInternalServerError {
-		t.Errorf("expected: 'Allowed=false'. but got response: %v", response)
-	}
-}
-
-func TestDormantDatabaseValidator_Admit_DeleteWithWipingByUser(t *testing.T) {
-	validator := DormantDatabaseValidator{}
-	validator._initialize()
-
-	obj := validDormantDatabase()
-	obj = editSpecWipeOut(obj)
-	obj.Status.Phase = api.DormantDatabasePhaseWipedOut
-	if _, err := validator.extClient.KubedbV1alpha1().DormantDatabases("default").Create(&obj); err != nil {
-		t.Errorf(err.Error())
-	}
-
-	req := initialReq()
-	req.Operation = admission.Delete
-	req.UserInfo = userIsHooman()
-
-	response := validator.Admit(&req)
-	if response.Allowed != true {
-		t.Errorf("expected: 'Allowed=true'. but got response: %v", response)
-	}
-}
-
-func TestDormantDatabaseValidator_Admit_DeleteNonExistingDormantByOperator(t *testing.T) {
-	validator := DormantDatabaseValidator{}
-	validator._initialize()
-
-	req := initialReq()
-	req.Operation = admission.Delete
-	req.UserInfo = userIsOperator()
-
-	response := validator.Admit(&req)
-	if response.Allowed != true {
-		t.Errorf("expected: 'Allowed=true'. but got response: %v", response)
-	}
-}
-
-func TestDormantDatabaseValidator_Admit_DeleteNonExistingDormantByUser(t *testing.T) {
-	validator := DormantDatabaseValidator{}
-	validator._initialize()
-
-	req := initialReq()
-	req.Operation = admission.Delete
-	req.UserInfo = userIsHooman()
-
-	response := validator.Admit(&req)
-	if response.Allowed != true {
-		t.Errorf("expected: 'Allowed=true'. but got response: %v", response)
-	}
 }
 
 func validDormantDatabase() api.DormantDatabase {
@@ -330,7 +273,8 @@ func validDormantDatabase() api.DormantDatabase {
 			APIVersion: api.SchemeGroupVersion.String(),
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "foo",
+			Name:      "foo",
+			Namespace: "default",
 			Labels: map[string]string{
 				api.LabelDatabaseKind: api.ResourceKindMongoDB,
 			},
@@ -376,9 +320,15 @@ func editSpecResume(old api.DormantDatabase) api.DormantDatabase {
 	return old
 }
 
+func editStatusWipedOut(old api.DormantDatabase) api.DormantDatabase {
+	old.Spec.WipeOut = true
+	old.Status.Phase = api.DormantDatabasePhaseWipedOut
+	return old
+}
+
 func userIsOperator() authenticationv1.UserInfo {
 	return authenticationv1.UserInfo{
-		Username: "system:serviceaccount:default:kubedb-operator",
+		Username: "system:serviceaccount:kube-system:kubedb-operator",
 		Groups: []string{
 			"system:serviceaccounts",
 			"system:serviceaccounts:kube-system",
