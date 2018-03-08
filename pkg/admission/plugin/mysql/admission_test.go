@@ -46,7 +46,7 @@ func TestMySQLValidator_Admit(t *testing.T) {
 			validator.client = fake.NewSimpleClientset(
 				&core.Secret{
 					ObjectMeta: metaV1.ObjectMeta{
-						Name: "foo-auth",
+						Name:      "foo-auth",
 						Namespace: "default",
 					},
 				},
@@ -56,7 +56,6 @@ func TestMySQLValidator_Admit(t *testing.T) {
 					},
 				},
 			)
-
 
 			objJS, err := meta.MarshalToJson(&c.object, api.SchemeGroupVersion)
 			if err != nil {

@@ -1,11 +1,10 @@
-package redis
+package memcached
 
 import (
 	"net/http"
 	"os"
 	"testing"
 
-	"github.com/appscode/go/types"
 	kubeMon "github.com/appscode/kube-mon/api"
 	"github.com/appscode/kutil/meta"
 	api "github.com/kubedb/apimachinery/apis/kubedb/v1alpha1"
@@ -14,10 +13,7 @@ import (
 	"github.com/kubedb/kubedb-server/pkg/admission/util"
 	admission "k8s.io/api/admission/v1beta1"
 	authenticationV1 "k8s.io/api/authentication/v1"
-	core "k8s.io/api/core/v1"
-	storageV1beta1 "k8s.io/api/storage/v1beta1"
 	kerr "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metaV1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/fake"
@@ -33,23 +29,17 @@ func init() {
 var requestKind = metaV1.GroupVersionKind{
 	Group:   api.SchemeGroupVersion.Group,
 	Version: api.SchemeGroupVersion.Version,
-	Kind:    api.ResourceKindRedis,
+	Kind:    api.ResourceKindMemcached,
 }
 
-func TestRedisValidator_Admit(t *testing.T) {
+func TestMemcachedValidator_Admit(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.testName, func(t *testing.T) {
-			validator := RedisValidator{}
+			validator := MemcachedValidator{}
 
 			validator.initialized = true
 			validator.extClient = extFake.NewSimpleClientset()
-			validator.client = fake.NewSimpleClientset(
-				&storageV1beta1.StorageClass{
-					ObjectMeta: metaV1.ObjectMeta{
-						Name: "standard",
-					},
-				},
-			)
+			validator.client = fake.NewSimpleClientset()
 
 			objJS, err := meta.MarshalToJson(&c.object, api.SchemeGroupVersion)
 			if err != nil {
@@ -71,7 +61,7 @@ func TestRedisValidator_Admit(t *testing.T) {
 			req.OldObject.Raw = oldObjJS
 
 			if c.heatUp {
-				if _, err := validator.extClient.KubedbV1alpha1().Redises(c.namespace).Create(&c.object); err != nil && !kerr.IsAlreadyExists(err) {
+				if _, err := validator.extClient.KubedbV1alpha1().Memcacheds(c.namespace).Create(&c.object); err != nil && !kerr.IsAlreadyExists(err) {
 					t.Errorf(err.Error())
 				}
 			}
@@ -104,52 +94,52 @@ var cases = []struct {
 	namespace  string
 	operation  admission.Operation
 	userInfo   authenticationV1.UserInfo
-	object     api.Redis
-	oldObject  api.Redis
+	object     api.Memcached
+	oldObject  api.Memcached
 	heatUp     bool
 	result     bool
 }{
-	{"Create Valid Redis By User",
+	{"Create Valid Memcached By User",
 		requestKind,
 		"foo",
 		"default",
 		admission.Create,
 		userIsHooman(),
-		sampleRedis(),
-		api.Redis{},
+		sampleMemcached(),
+		api.Memcached{},
 		false,
 		true,
 	},
-	{"Create Invalid Redis By User",
+	{"Create Invalid Memcached By User",
 		requestKind,
 		"foo",
 		"default",
 		admission.Create,
 		userIsHooman(),
-		getAwkwardRedis(),
-		api.Redis{},
+		getAwkwardMemcached(),
+		api.Memcached{},
 		false,
 		false,
 	},
-	{"Create Invalid Redis By Operator",
+	{"Create Invalid Memcached By Operator",
 		requestKind,
 		"foo",
 		"default",
 		admission.Create,
 		userIsHooman(),
-		getAwkwardRedis(),
-		api.Redis{},
+		getAwkwardMemcached(),
+		api.Memcached{},
 		false,
 		false,
 	},
-	{"Edit Redis Spec.Version By User",
+	{"Edit Memcached Spec.Version By User",
 		requestKind,
 		"foo",
 		"default",
 		admission.Update,
 		userIsHooman(),
-		editSpecVersion(sampleRedis()),
-		sampleRedis(),
+		editSpecVersion(sampleMemcached()),
+		sampleMemcached(),
 		false,
 		false,
 	},
@@ -159,8 +149,8 @@ var cases = []struct {
 		"default",
 		admission.Update,
 		userIsHooman(),
-		editStatus(sampleRedis()),
-		sampleRedis(),
+		editStatus(sampleMemcached()),
+		sampleMemcached(),
 		false,
 		false,
 	},
@@ -170,8 +160,8 @@ var cases = []struct {
 		"default",
 		admission.Update,
 		userIsOperator(),
-		editStatus(sampleRedis()),
-		sampleRedis(),
+		editStatus(sampleMemcached()),
+		sampleMemcached(),
 		false,
 		true,
 	},
@@ -181,8 +171,8 @@ var cases = []struct {
 		"default",
 		admission.Update,
 		userIsHooman(),
-		editSpecMonitor(sampleRedis()),
-		sampleRedis(),
+		editSpecMonitor(sampleMemcached()),
+		sampleMemcached(),
 		false,
 		true,
 	},
@@ -192,8 +182,8 @@ var cases = []struct {
 		"default",
 		admission.Update,
 		userIsOperator(),
-		editSpecMonitor(sampleRedis()),
-		sampleRedis(),
+		editSpecMonitor(sampleMemcached()),
+		sampleMemcached(),
 		false,
 		true,
 	},
@@ -203,8 +193,8 @@ var cases = []struct {
 		"default",
 		admission.Update,
 		userIsHooman(),
-		editSpecInvalidMonitor(sampleRedis()),
-		sampleRedis(),
+		editSpecInvalidMonitor(sampleMemcached()),
+		sampleMemcached(),
 		false,
 		false,
 	},
@@ -214,8 +204,8 @@ var cases = []struct {
 		"default",
 		admission.Update,
 		userIsOperator(),
-		editSpecInvalidMonitor(sampleRedis()),
-		sampleRedis(),
+		editSpecInvalidMonitor(sampleMemcached()),
+		sampleMemcached(),
 		false,
 		false,
 	},
@@ -225,126 +215,118 @@ var cases = []struct {
 		"default",
 		admission.Update,
 		userIsHooman(),
-		editSpecDoNotPause(sampleRedis()),
-		sampleRedis(),
+		editSpecDoNotPause(sampleMemcached()),
+		sampleMemcached(),
 		false,
 		true,
 	},
-	{"Delete Redis when Spec.DoNotPause=true by Operator",
+	{"Delete Memcached when Spec.DoNotPause=true by Operator",
 		requestKind,
 		"foo",
 		"default",
 		admission.Delete,
 		userIsOperator(),
-		sampleRedis(),
-		api.Redis{},
+		sampleMemcached(),
+		api.Memcached{},
 		true,
 		false,
 	},
-	{"Delete Redis when Spec.DoNotPause=true by User",
+	{"Delete Memcached when Spec.DoNotPause=true by User",
 		requestKind,
 		"foo",
 		"default",
 		admission.Delete,
 		userIsHooman(),
-		sampleRedis(),
-		api.Redis{},
+		sampleMemcached(),
+		api.Memcached{},
 		true,
 		false,
 	},
-	{"Delete Redis when Spec.DoNotPause=false by Operator",
+	{"Delete Memcached when Spec.DoNotPause=false by Operator",
 		requestKind,
 		"foo",
 		"default",
 		admission.Delete,
 		userIsOperator(),
-		editSpecDoNotPause(sampleRedis()),
-		api.Redis{},
+		editSpecDoNotPause(sampleMemcached()),
+		api.Memcached{},
 		true,
 		true,
 	},
-	{"Delete Redis when Spec.DoNotPause=false by User",
+	{"Delete Memcached when Spec.DoNotPause=false by User",
 		requestKind,
 		"foo",
 		"default",
 		admission.Delete,
 		userIsHooman(),
-		editSpecDoNotPause(sampleRedis()),
-		api.Redis{},
+		editSpecDoNotPause(sampleMemcached()),
+		api.Memcached{},
 		true,
 		true,
 	},
-	{"Delete Non Existing Redis By Operator",
+	{"Delete Non Existing Memcached By Operator",
 		requestKind,
 		"foo",
 		"default",
 		admission.Delete,
 		userIsOperator(),
-		api.Redis{},
-		api.Redis{},
+		api.Memcached{},
+		api.Memcached{},
 		false,
 		true,
 	},
-	{"Delete Non Existing Redis By User",
+	{"Delete Non Existing Memcached By User",
 		requestKind,
 		"foo",
 		"default",
 		admission.Delete,
 		userIsHooman(),
-		api.Redis{},
-		api.Redis{},
+		api.Memcached{},
+		api.Memcached{},
 		false,
 		true,
 	},
 }
 
-func sampleRedis() api.Redis {
-	return api.Redis{
+func sampleMemcached() api.Memcached {
+	return api.Memcached{
 		TypeMeta: metaV1.TypeMeta{
-			Kind:       api.ResourceKindRedis,
+			Kind:       api.ResourceKindMemcached,
 			APIVersion: api.SchemeGroupVersion.String(),
 		},
 		ObjectMeta: metaV1.ObjectMeta{
 			Name:      "foo",
 			Namespace: "default",
 			Labels: map[string]string{
-				api.LabelDatabaseKind: api.ResourceKindRedis,
+				api.LabelDatabaseKind: api.ResourceKindMemcached,
 			},
 		},
-		Spec: api.RedisSpec{
-			Version:    "4",
+		Spec: api.MemcachedSpec{
+			Version:    "1.5.4",
 			DoNotPause: true,
-			Storage: &core.PersistentVolumeClaimSpec{
-				StorageClassName: types.StringP("standard"),
-				Resources: core.ResourceRequirements{
-					Requests: core.ResourceList{
-						core.ResourceStorage: resource.MustParse("100Mi"),
-					},
-				},
-			},
 		},
 	}
 }
 
-func getAwkwardRedis() api.Redis {
-	redis := sampleRedis()
-	redis.Spec.Version = "3.0"
+func getAwkwardMemcached() api.Memcached {
+	redis := sampleMemcached()
+	redis.Spec.Version = "4.4"
 	return redis
 }
 
-func editSpecVersion(old api.Redis) api.Redis {
-	old.Spec.Version = "4.4"
+func editSpecVersion(old api.Memcached) api.Memcached {
+	old.Spec.Version = "1.5.3"
 	return old
 }
 
-func editStatus(old api.Redis) api.Redis {
-	old.Status = api.RedisStatus{
+func editStatus(old api.Memcached) api.Memcached {
+	old.Status = api.MemcachedStatus{
 		Phase: api.DatabasePhaseCreating,
 	}
 	return old
 }
 
-func editSpecMonitor(old api.Redis) api.Redis {
+func editSpecMonitor(old api.Memcached) api.Memcached {
 	old.Spec.Monitor = &kubeMon.AgentSpec{
 		Agent: kubeMon.AgentPrometheusBuiltin,
 	}
@@ -352,14 +334,14 @@ func editSpecMonitor(old api.Redis) api.Redis {
 }
 
 // should be failed because more fields required for COreOS Monitoring
-func editSpecInvalidMonitor(old api.Redis) api.Redis {
+func editSpecInvalidMonitor(old api.Memcached) api.Memcached {
 	old.Spec.Monitor = &kubeMon.AgentSpec{
 		Agent: kubeMon.AgentCoreOSPrometheus,
 	}
 	return old
 }
 
-func editSpecDoNotPause(old api.Redis) api.Redis {
+func editSpecDoNotPause(old api.Memcached) api.Memcached {
 	old.Spec.DoNotPause = false
 	return old
 }
