@@ -32,7 +32,7 @@ func ValidateUpdate(obj, oldObj runtime.Object, kind string) error {
 	_, err := meta_util.CreateStrategicPatch(oldObj, obj, preconditions...)
 	if err != nil {
 		if mergepatch.IsPreconditionFailed(err) {
-			return preconditionFailedError(kind)
+			return fmt.Errorf("%v.%v", err, preconditionFailedError(kind))
 		}
 		return err
 	}
@@ -110,11 +110,10 @@ var preconditionSpecField = map[string][]string{
 func preconditionFailedError(kind string) error {
 	str := preconditionSpecField[kind]
 	strList := strings.Join(str, "\n\t")
-	return fmt.Errorf(`At least one of the following was changed:
+	return fmt.Errorf(strings.Join([]string{`At least one of the following was changed:
 	apiVersion
 	kind
 	name
 	namespace
-	status
-    %v`, strList)
+	status`, strList}, "\n\t"))
 }
