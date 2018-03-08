@@ -17,24 +17,12 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/fake"
 	clientsetscheme "k8s.io/client-go/kubernetes/scheme"
-	"github.com/the-redback/go-oneliners"
 )
 
 func init() {
 	scheme.AddToScheme(clientsetscheme.Scheme)
 	os.Setenv(util.EnvSvcAccountName, "kubedb-operator")
 	os.Setenv("KUBE_NAMESPACE", "kube-system")
-}
-
-func (a *DormantDatabaseValidator) _initialize() error {
-	a.lock.Lock()
-	defer a.lock.Unlock()
-
-	a.initialized = true
-	a.client = fake.NewSimpleClientset()
-	a.extClient = ext_fake.NewSimpleClientset()
-
-	return nil
 }
 
 var requestKind = metav1.GroupVersionKind{
@@ -47,7 +35,9 @@ func TestDormantDatabaseValidator_Admit(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.testName, func(t *testing.T) {
 			validator := DormantDatabaseValidator{}
-			validator._initialize()
+			validator.initialized = true
+			validator.client = fake.NewSimpleClientset()
+			validator.extClient = ext_fake.NewSimpleClientset()
 
 			objJS, err := meta.MarshalToJson(&c.object, api.SchemeGroupVersion)
 			if err != nil {
@@ -69,7 +59,6 @@ func TestDormantDatabaseValidator_Admit(t *testing.T) {
 			req.OldObject.Raw = oldObjJS
 
 			if c.heatUp {
-
 				if _, err := validator.extClient.KubedbV1alpha1().DormantDatabases(c.namespace).Create(&c.object); err != nil && !kerr.IsAlreadyExists(err) {
 					t.Errorf(err.Error())
 				}
@@ -82,7 +71,6 @@ func TestDormantDatabaseValidator_Admit(t *testing.T) {
 			}
 
 			response := validator.Admit(req)
-			oneliners.PrettyJson(response,"response")
 			if c.result == true {
 				if response.Allowed != true {
 					t.Errorf("expected: 'Allowed=true'. but got response: %v", response)
