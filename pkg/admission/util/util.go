@@ -14,6 +14,9 @@ import (
 )
 
 var (
+	// SERVICE_ACCOUNT_NAME is the key of Environment key-value.
+	// This key-value contains the name of service-account of KubeDB-Operator.
+	// This environment will be set while deploying KubeDB-Server.
 	EnvSvcAccountName = "SERVICE_ACCOUNT_NAME"
 )
 
