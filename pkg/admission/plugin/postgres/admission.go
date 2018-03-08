@@ -88,25 +88,21 @@ func (a *PostgresValidator) Admit(req *admission.AdmissionRequest) *admission.Ad
 			return hookapi.StatusForbidden(err)
 		}
 	case admission.Update:
-		if !util.IsKubeDBOperator(req.UserInfo) {
-			// validate changes made by user
-			obj, err := meta_util.UnmarshalToJSON(req.Object.Raw, api.SchemeGroupVersion)
-			if err != nil {
-				return hookapi.StatusBadRequest(err)
-			}
-			OldObj, err := meta_util.UnmarshalToJSON(req.OldObject.Raw, api.SchemeGroupVersion)
-			if err != nil {
-				return hookapi.StatusBadRequest(err)
-			}
-			if err := util.ValidateUpdate(obj, OldObj, req.Kind.Kind); err != nil {
-				return hookapi.StatusForbidden(fmt.Errorf("%v", err))
-			}
-		}
-		// validate database specs
-		obj, err := meta.UnmarshalToJSON(req.Object.Raw, api.SchemeGroupVersion)
+		obj, err := meta_util.UnmarshalToJSON(req.Object.Raw, api.SchemeGroupVersion)
 		if err != nil {
 			return hookapi.StatusBadRequest(err)
 		}
+		OldObj, err := meta_util.UnmarshalToJSON(req.OldObject.Raw, api.SchemeGroupVersion)
+		if err != nil {
+			return hookapi.StatusBadRequest(err)
+		}
+		if !util.IsKubeDBOperator(req.UserInfo) {
+			// validate changes made by user
+			if err := util.ValidateUpdate(obj, OldObj, req.Kind.Kind); err != nil {
+				return hookapi.StatusBadRequest(fmt.Errorf("%v", err))
+			}
+		}
+		// validate database specs
 		if err = pgv.ValidatePostgres(a.client, a.extClient.KubedbV1alpha1(), obj.(*api.Postgres)); err != nil {
 			return hookapi.StatusForbidden(err)
 		}

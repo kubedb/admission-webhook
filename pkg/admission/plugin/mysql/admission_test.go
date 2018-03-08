@@ -1,4 +1,4 @@
-package mongodb
+package mysql
 
 import (
 	"net/http"
@@ -33,13 +33,13 @@ func init() {
 var requestKind = metaV1.GroupVersionKind{
 	Group:   api.SchemeGroupVersion.Group,
 	Version: api.SchemeGroupVersion.Version,
-	Kind:    api.ResourceKindMongoDB,
+	Kind:    api.ResourceKindMySQL,
 }
 
-func TestMongoDBValidator_Admit(t *testing.T) {
+func TestMySQLValidator_Admit(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.testName, func(t *testing.T) {
-			validator := MongoDBValidator{}
+			validator := MySQLValidator{}
 
 			validator.initialized = true
 			validator.extClient = extFake.NewSimpleClientset()
@@ -78,7 +78,7 @@ func TestMongoDBValidator_Admit(t *testing.T) {
 			req.OldObject.Raw = oldObjJS
 
 			if c.heatUp {
-				if _, err := validator.extClient.KubedbV1alpha1().MongoDBs(c.namespace).Create(&c.object); err != nil && !kerr.IsAlreadyExists(err) {
+				if _, err := validator.extClient.KubedbV1alpha1().MySQLs(c.namespace).Create(&c.object); err != nil && !kerr.IsAlreadyExists(err) {
 					t.Errorf(err.Error())
 				}
 			}
@@ -111,63 +111,63 @@ var cases = []struct {
 	namespace  string
 	operation  admission.Operation
 	userInfo   authenticationV1.UserInfo
-	object     api.MongoDB
-	oldObject  api.MongoDB
+	object     api.MySQL
+	oldObject  api.MySQL
 	heatUp     bool
 	result     bool
 }{
-	{"Create Valid MongoDB By User",
+	{"Create Valid MySQL By User",
 		requestKind,
 		"foo",
 		"default",
 		admission.Create,
 		userIsHooman(),
-		sampleMongoDB(),
-		api.MongoDB{},
+		sampleMySQL(),
+		api.MySQL{},
 		false,
 		true,
 	},
-	{"Create Invalid MongoDB By User",
+	{"Create Invalid MySQL By User",
 		requestKind,
 		"foo",
 		"default",
 		admission.Create,
 		userIsHooman(),
-		getAwkwardMongoDB(),
-		api.MongoDB{},
+		getAwkwardMySQL(),
+		api.MySQL{},
 		false,
 		false,
 	},
-	{"Create Invalid MongoDB By Operator",
+	{"Create Invalid MySQL By Operator",
 		requestKind,
 		"foo",
 		"default",
 		admission.Create,
 		userIsHooman(),
-		getAwkwardMongoDB(),
-		api.MongoDB{},
+		getAwkwardMySQL(),
+		api.MySQL{},
 		false,
 		false,
 	},
-	{"Edit MongoDB Spec.DatabaseSecret By User",
+	{"Edit MySQL Spec.DatabaseSecret By User",
 		requestKind,
 		"foo",
 		"default",
 		admission.Update,
 		userIsHooman(),
-		editSpecSecret(sampleMongoDB()),
-		sampleMongoDB(),
+		editSpecSecret(sampleMySQL()),
+		sampleMySQL(),
 		false,
 		false,
 	},
-	{"Edit MongoDB Spec.DatabaseSecret By Operator",
+	{"Edit MySQL Spec.DatabaseSecret By Operator",
 		requestKind,
 		"foo",
 		"default",
 		admission.Update,
 		userIsOperator(),
-		editSpecSecret(sampleMongoDB()),
-		sampleMongoDB(),
+		editSpecSecret(sampleMySQL()),
+		sampleMySQL(),
 		false,
 		true,
 	},
@@ -177,8 +177,8 @@ var cases = []struct {
 		"default",
 		admission.Update,
 		userIsHooman(),
-		editStatus(sampleMongoDB()),
-		sampleMongoDB(),
+		editStatus(sampleMySQL()),
+		sampleMySQL(),
 		false,
 		false,
 	},
@@ -188,8 +188,8 @@ var cases = []struct {
 		"default",
 		admission.Update,
 		userIsOperator(),
-		editStatus(sampleMongoDB()),
-		sampleMongoDB(),
+		editStatus(sampleMySQL()),
+		sampleMySQL(),
 		false,
 		true,
 	},
@@ -199,8 +199,8 @@ var cases = []struct {
 		"default",
 		admission.Update,
 		userIsHooman(),
-		editSpecMonitor(sampleMongoDB()),
-		sampleMongoDB(),
+		editSpecMonitor(sampleMySQL()),
+		sampleMySQL(),
 		false,
 		true,
 	},
@@ -210,8 +210,8 @@ var cases = []struct {
 		"default",
 		admission.Update,
 		userIsOperator(),
-		editSpecMonitor(sampleMongoDB()),
-		sampleMongoDB(),
+		editSpecMonitor(sampleMySQL()),
+		sampleMySQL(),
 		false,
 		true,
 	},
@@ -221,8 +221,8 @@ var cases = []struct {
 		"default",
 		admission.Update,
 		userIsHooman(),
-		editSpecInvalidMonitor(sampleMongoDB()),
-		sampleMongoDB(),
+		editSpecInvalidMonitor(sampleMySQL()),
+		sampleMySQL(),
 		false,
 		false,
 	},
@@ -232,8 +232,8 @@ var cases = []struct {
 		"default",
 		admission.Update,
 		userIsOperator(),
-		editSpecInvalidMonitor(sampleMongoDB()),
-		sampleMongoDB(),
+		editSpecInvalidMonitor(sampleMySQL()),
+		sampleMySQL(),
 		false,
 		false,
 	},
@@ -243,94 +243,94 @@ var cases = []struct {
 		"default",
 		admission.Update,
 		userIsHooman(),
-		editSpecDoNotPause(sampleMongoDB()),
-		sampleMongoDB(),
+		editSpecDoNotPause(sampleMySQL()),
+		sampleMySQL(),
 		false,
 		true,
 	},
-	{"Delete Mongodb when Spec.DoNotPause=true by Operator",
+	{"Delete MySQL when Spec.DoNotPause=true by Operator",
 		requestKind,
 		"foo",
 		"default",
 		admission.Delete,
 		userIsOperator(),
-		sampleMongoDB(),
-		api.MongoDB{},
+		sampleMySQL(),
+		api.MySQL{},
 		true,
 		false,
 	},
-	{"Delete Mongodb when Spec.DoNotPause=true by User",
+	{"Delete MySQL when Spec.DoNotPause=true by User",
 		requestKind,
 		"foo",
 		"default",
 		admission.Delete,
 		userIsHooman(),
-		sampleMongoDB(),
-		api.MongoDB{},
+		sampleMySQL(),
+		api.MySQL{},
 		true,
 		false,
 	},
-	{"Delete Mongodb when Spec.DoNotPause=false by Operator",
+	{"Delete MySQL when Spec.DoNotPause=false by Operator",
 		requestKind,
 		"foo",
 		"default",
 		admission.Delete,
 		userIsOperator(),
-		editSpecDoNotPause(sampleMongoDB()),
-		api.MongoDB{},
+		editSpecDoNotPause(sampleMySQL()),
+		api.MySQL{},
 		true,
 		true,
 	},
-	{"Delete Mongodb when Spec.DoNotPause=false by User",
+	{"Delete MySQL when Spec.DoNotPause=false by User",
 		requestKind,
 		"foo",
 		"default",
 		admission.Delete,
 		userIsHooman(),
-		editSpecDoNotPause(sampleMongoDB()),
-		api.MongoDB{},
+		editSpecDoNotPause(sampleMySQL()),
+		api.MySQL{},
 		true,
 		true,
 	},
-	{"Delete Non Existing MongoDB By Operator",
+	{"Delete Non Existing MySQL By Operator",
 		requestKind,
 		"foo",
 		"default",
 		admission.Delete,
 		userIsOperator(),
-		api.MongoDB{},
-		api.MongoDB{},
+		api.MySQL{},
+		api.MySQL{},
 		false,
 		true,
 	},
-	{"Delete Non Existing MongoDB By User",
+	{"Delete Non Existing MySQL By User",
 		requestKind,
 		"foo",
 		"default",
 		admission.Delete,
 		userIsHooman(),
-		api.MongoDB{},
-		api.MongoDB{},
+		api.MySQL{},
+		api.MySQL{},
 		false,
 		true,
 	},
 }
 
-func sampleMongoDB() api.MongoDB {
-	return api.MongoDB{
+func sampleMySQL() api.MySQL {
+	return api.MySQL{
 		TypeMeta: metaV1.TypeMeta{
-			Kind:       api.ResourceKindMongoDB,
+			Kind:       api.ResourceKindMySQL,
 			APIVersion: api.SchemeGroupVersion.String(),
 		},
 		ObjectMeta: metaV1.ObjectMeta{
 			Name:      "foo",
 			Namespace: "default",
 			Labels: map[string]string{
-				api.LabelDatabaseKind: api.ResourceKindMongoDB,
+				api.LabelDatabaseKind: api.ResourceKindMySQL,
 			},
 		},
-		Spec: api.MongoDBSpec{
-			Version:    "3.4",
+		Spec: api.MySQLSpec{
+			Version:    "8.0",
 			DoNotPause: true,
 			Storage: &core.PersistentVolumeClaimSpec{
 				StorageClassName: types.StringP("standard"),
@@ -344,7 +344,7 @@ func sampleMongoDB() api.MongoDB {
 				ScriptSource: &api.ScriptSourceSpec{
 					VolumeSource: core.VolumeSource{
 						GitRepo: &core.GitRepoVolumeSource{
-							Repository: "https://github.com/kubedb/mongodb-init-scripts.git",
+							Repository: "https://github.com/kubedb/mysql-init-scripts.git",
 							Directory:  ".",
 						},
 					},
@@ -354,27 +354,27 @@ func sampleMongoDB() api.MongoDB {
 	}
 }
 
-func getAwkwardMongoDB() api.MongoDB {
-	mongodb := sampleMongoDB()
-	mongodb.Spec.Version = "3.0"
-	return mongodb
+func getAwkwardMySQL() api.MySQL {
+	mysql := sampleMySQL()
+	mysql.Spec.Version = "3.0"
+	return mysql
 }
 
-func editSpecSecret(old api.MongoDB) api.MongoDB {
+func editSpecSecret(old api.MySQL) api.MySQL {
 	old.Spec.DatabaseSecret = &core.SecretVolumeSource{
 		SecretName: "foo-auth",
 	}
 	return old
 }
 
-func editStatus(old api.MongoDB) api.MongoDB {
-	old.Status = api.MongoDBStatus{
+func editStatus(old api.MySQL) api.MySQL {
+	old.Status = api.MySQLStatus{
 		Phase: api.DatabasePhaseCreating,
 	}
 	return old
 }
 
-func editSpecMonitor(old api.MongoDB) api.MongoDB {
+func editSpecMonitor(old api.MySQL) api.MySQL {
 	old.Spec.Monitor = &kubeMon.AgentSpec{
 		Agent: kubeMon.AgentPrometheusBuiltin,
 	}
@@ -382,14 +382,14 @@ func editSpecMonitor(old api.MongoDB) api.MongoDB {
 }
 
 // should be failed because more fields required for COreOS Monitoring
-func editSpecInvalidMonitor(old api.MongoDB) api.MongoDB {
+func editSpecInvalidMonitor(old api.MySQL) api.MySQL {
 	old.Spec.Monitor = &kubeMon.AgentSpec{
 		Agent: kubeMon.AgentCoreOSPrometheus,
 	}
 	return old
 }
 
-func editSpecDoNotPause(old api.MongoDB) api.MongoDB {
+func editSpecDoNotPause(old api.MySQL) api.MySQL {
 	old.Spec.DoNotPause = false
 	return old
 }

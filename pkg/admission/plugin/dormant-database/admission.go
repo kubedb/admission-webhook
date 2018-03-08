@@ -97,7 +97,7 @@ func (a *DormantDatabaseValidator) Admit(req *admission.AdmissionRequest) *admis
 				return hookapi.StatusBadRequest(err)
 			}
 			if err := util.ValidateUpdate(obj, OldObj, req.Kind.Kind); err != nil {
-				return hookapi.StatusForbidden(fmt.Errorf("%v", err))
+				return hookapi.StatusBadRequest(fmt.Errorf("%v", err))
 			}
 		}
 	}
