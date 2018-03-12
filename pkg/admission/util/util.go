@@ -31,7 +31,7 @@ func IsKubeDBOperator(userInfo authenticationv1.UserInfo) bool {
 }
 
 func ValidateUpdate(obj, oldObj runtime.Object, kind string) error {
-	return nil
+	return nil // todo: delete this line
 	preconditions := getPreconditionFunc(kind)
 	_, err := meta_util.CreateStrategicPatch(oldObj, obj, preconditions...)
 	if err != nil {
