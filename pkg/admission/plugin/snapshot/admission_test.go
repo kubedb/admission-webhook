@@ -231,7 +231,7 @@ func sampleSnapshot() api.Snapshot {
 
 func getAwkwardSnapshot() api.Snapshot {
 	redis := sampleSnapshot()
-	redis.Spec =api.SnapshotSpec{
+	redis.Spec = api.SnapshotSpec{
 		DatabaseName: "foo",
 		SnapshotStorageSpec: api.SnapshotStorageSpec{
 			StorageSecretName: "foo-secret",

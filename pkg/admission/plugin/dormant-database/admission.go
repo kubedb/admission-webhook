@@ -1,17 +1,13 @@
 package dormant_database
 
 import (
-	"fmt"
 	"sync"
 
 	hookapi "github.com/appscode/kutil/admission/api"
-	meta_util "github.com/appscode/kutil/meta"
 	api "github.com/kubedb/apimachinery/apis/kubedb/v1alpha1"
 	cs "github.com/kubedb/apimachinery/client/clientset/versioned"
-	"github.com/kubedb/kubedb-server/pkg/admission/util"
+	"github.com/the-redback/go-oneliners"
 	admission "k8s.io/api/admission/v1beta1"
-	kerr "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -68,39 +64,42 @@ func (a *DormantDatabaseValidator) Admit(req *admission.AdmissionRequest) *admis
 		return hookapi.StatusUninitialized()
 	}
 
-	switch req.Operation {
-	case admission.Delete:
-		// validate the operation made by User
-		if !util.IsKubeDBOperator(req.UserInfo) {
-			// req.Object.Raw = nil, so read from kubernetes
-			obj, err := a.extClient.KubedbV1alpha1().DormantDatabases(req.Namespace).Get(req.Name, metav1.GetOptions{})
-			if err != nil && !kerr.IsNotFound(err) {
-				return hookapi.StatusInternalServerError(err)
-			} else if err == nil && obj.Status.Phase != api.DormantDatabasePhaseWipedOut {
-				return hookapi.StatusBadRequest(fmt.Errorf(`dormant_database "%s" is not wipedOut. `, req.Name))
-			}
-		}
-	case admission.Create:
-		// validate the operation made by User
-		if !util.IsKubeDBOperator(req.UserInfo) {
-			return hookapi.StatusBadRequest(fmt.Errorf(`user can't create object of Kind dormantdatabase`))
-		}
-	case admission.Update:
-		// validate the operation made by User
-		if !util.IsKubeDBOperator(req.UserInfo) {
-			obj, err := meta_util.UnmarshalToJSON(req.Object.Raw, api.SchemeGroupVersion)
-			if err != nil {
-				return hookapi.StatusBadRequest(err)
-			}
-			OldObj, err := meta_util.UnmarshalToJSON(req.OldObject.Raw, api.SchemeGroupVersion)
-			if err != nil {
-				return hookapi.StatusBadRequest(err)
-			}
-			if err := util.ValidateUpdate(obj, OldObj, req.Kind.Kind); err != nil {
-				return hookapi.StatusBadRequest(fmt.Errorf("%v", err))
-			}
-		}
-	}
+	oneliners.PrettyJson(req, "dormantdbbbbbbbbbbbbbbbbbbbbbbbb")
+
+	//switch req.Operation {
+	//case admission.Delete:
+	//	// validate the operation made by User
+	//	if !util.IsKubeDBOperator(req.UserInfo) {
+	//		// req.Object.Raw = nil, so read from kubernetes
+	//		obj, err := a.extClient.KubedbV1alpha1().DormantDatabases(req.Namespace).Get(req.Name, metav1.GetOptions{})
+	//		if err != nil && !kerr.IsNotFound(err) {
+	//			return hookapi.StatusInternalServerError(err)
+	//		} else if err == nil && obj.Status.Phase != api.DormantDatabasePhaseWipedOut {
+	//			return hookapi.StatusBadRequest(fmt.Errorf(`dormant_database "%s" is not wipedOut. `, req.Name))
+	//		}
+	//	}
+	//case admission.Create:
+	//	// validate the operation made by User
+	//	if !util.IsKubeDBOperator(req.UserInfo) {
+	//		return hookapi.StatusBadRequest(fmt.Errorf(`user can't create object of Kind dormantdatabase`))
+	//	}
+	//case admission.Update:
+	//	// validate the operation made by User
+	//	if !util.IsKubeDBOperator(req.UserInfo) {
+	//		obj, err := meta_util.UnmarshalToJSON(req.Object.Raw, api.SchemeGroupVersion)
+	//		if err != nil {
+	//			return hookapi.StatusBadRequest(err)
+	//		}
+	//		OldObj, err := meta_util.UnmarshalToJSON(req.OldObject.Raw, api.SchemeGroupVersion)
+	//		if err != nil {
+	//			return hookapi.StatusBadRequest(err)
+	//		}
+	//		if err := util.ValidateUpdate(obj, OldObj, req.Kind.Kind); err != nil {
+	//			return hookapi.StatusBadRequest(fmt.Errorf("%v", err))
+	//		}
+	//	}
+	//}
+
 	status.Allowed = true
 	return status
 }

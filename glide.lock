@@ -1,5 +1,5 @@
-hash: ec2ce305c73a19c2142ff464c308b7aa1a1dfe22e11ab662f0a6cda6962d27df
-updated: 2018-03-08T10:08:12.985668949+06:00
+hash: 464d14c70f57ff3be5448f7acda4e727ac398fc9fea0a34a2eded278da73191b
+updated: 2018-03-12T16:34:47.313598191+06:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
@@ -9,7 +9,7 @@ imports:
   - compute/metadata
   - internal
 - name: github.com/appscode/go
-  version: c312c0a1fe0d4988480073287b8633fc5a244647
+  version: f8f2e1c7d2d10789cdd0540468b487d14421dbf9
   subpackages:
   - analytics
   - context
@@ -29,12 +29,15 @@ imports:
   subpackages:
   - api
 - name: github.com/appscode/kutil
-  version: 01f44212cb743f96b271564c9bf53a8a32766c33
+  version: e3a21009a5f4536b54e15941bb8cd081a856d9fb
   subpackages:
   - admission/api
+  - core/v1
   - meta
   - registry/admissionreview/v1beta1
   - tools/analytics
+- name: github.com/appscode/mergo
+  version: e3000cb3d28c72b837601cac94debd91032d19fe
 - name: github.com/appscode/osm
   version: 8175dd853f6f3d4530b14018901c79140e305f3a
   subpackages:
@@ -86,6 +89,10 @@ imports:
   version: 3ac7bf7a47d159a033b107610db8a1b6575507a4
   subpackages:
   - quantile
+- name: github.com/cloudflare/cfssl
+  version: b53da94cf51de120a50cbae533152fb3935375e0
+  subpackages:
+  - log
 - name: github.com/coreos/etcd
   version: 0520cb9304cb2385f7e72b8bc02d6e4d3257158a
   subpackages:
@@ -287,6 +294,7 @@ imports:
   - client/clientset/versioned/scheme
   - client/clientset/versioned/typed/kubedb/v1alpha1
   - client/clientset/versioned/typed/kubedb/v1alpha1/fake
+  - client/clientset/versioned/typed/kubedb/v1alpha1/util
   - pkg/storage
   - pkg/validator
 - name: github.com/kubedb/elasticsearch
@@ -298,8 +306,9 @@ imports:
   subpackages:
   - pkg/validator
 - name: github.com/kubedb/mongodb
-  version: 558e60d7073eddb2ce9db7dfc6ce671bc25ae63b
+  version: 7c3a87337e35e34722a80beb34f55a34205e5d0c
   subpackages:
+  - pkg/mutator
   - pkg/validator
 - name: github.com/kubedb/mysql
   version: b4b749dff97bd2ed8a91ae418be86e1bb1f03bbd
@@ -379,6 +388,8 @@ imports:
   - doc
 - name: github.com/spf13/pflag
   version: ee5fd03fd6acfd43e44aea0b4135958546ed8e73
+- name: github.com/the-redback/go-oneliners
+  version: 82a97ec58df4809a2bc57ebbbcc1e6a2feb78111
 - name: github.com/ugorji/go
   version: ded73eae5db7e7a0ef6f55aace87a2873c5d2b74
   subpackages:
@@ -434,7 +445,7 @@ imports:
   - unicode/norm
   - width
 - name: google.golang.org/api
-  version: 7f657476956314fee258816aaf81c0ff65cf8bee
+  version: 17ac5598d127e9c0f2a74f1c96d84cf7ebcc312f
   subpackages:
   - gensupport
   - googleapi
@@ -555,6 +566,7 @@ imports:
   - pkg/util/httpstream
   - pkg/util/intstr
   - pkg/util/json
+  - pkg/util/jsonmergepatch
   - pkg/util/mergepatch
   - pkg/util/net
   - pkg/util/proxy
