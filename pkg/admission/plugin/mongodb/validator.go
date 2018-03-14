@@ -10,7 +10,6 @@ import (
 	cs "github.com/kubedb/apimachinery/client/clientset/versioned"
 	"github.com/kubedb/kubedb-server/pkg/admission/util"
 	mgv "github.com/kubedb/mongodb/pkg/validator"
-	"github.com/the-redback/go-oneliners"
 	admission "k8s.io/api/admission/v1beta1"
 	kerr "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -70,7 +69,7 @@ func (a *MongoDBValidator) Admit(req *admission.AdmissionRequest) *admission.Adm
 		return hookapi.StatusUninitialized()
 	}
 
-	oneliners.PrettyJson(req, "validator mongodb")
+	//oneliners.PrettyJson(req, "validator mongodb")
 
 	switch req.Operation {
 	case admission.Delete:
