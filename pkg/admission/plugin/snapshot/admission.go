@@ -91,8 +91,10 @@ func (a *SnapshotValidator) Admit(req *admission.AdmissionRequest) *admission.Ad
 	if err := amv.ValidateSnapshotSpec(a.client, obj.(*api.Snapshot).Spec.SnapshotStorageSpec, req.Namespace); err != nil {
 		return hookapi.StatusForbidden(err)
 	}
-	if err := a.isSnapshotRunning(obj.(*api.Snapshot)); err != nil {
-		return hookapi.StatusForbidden(err)
+	if req.Operation == admission.Create {
+		if err := a.isSnapshotRunning(obj.(*api.Snapshot)); err != nil {
+			return hookapi.StatusForbidden(err)
+		}
 	}
 
 	status.Allowed = true
