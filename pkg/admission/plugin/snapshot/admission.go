@@ -82,6 +82,11 @@ func (a *SnapshotValidator) Admit(req *admission.AdmissionRequest) *admission.Ad
 		if err := util.ValidateUpdate(obj, oldObject, req.Kind.Kind); err != nil {
 			return hookapi.StatusBadRequest(fmt.Errorf("%v", err))
 		}
+		// Skip checking validation is Spec is not changed
+		if meta_util.Equal(obj.(*api.Snapshot).Spec, oldObject.(*api.Snapshot).Spec) {
+			status.Allowed = true
+			return status
+		}
 	}
 	// validates if database of particular kind exists
 	if err := a.validateSnapshot(obj.(*api.Snapshot)); err != nil {
@@ -92,6 +97,8 @@ func (a *SnapshotValidator) Admit(req *admission.AdmissionRequest) *admission.Ad
 		return hookapi.StatusForbidden(err)
 	}
 	if req.Operation == admission.Create {
+		// isSnapshotRunning checks if a snapshot is already running. Check this only when creating snapshot,
+		// because Snapshot.Status will be needed to edit later and this method will give error for that update.
 		if err := a.isSnapshotRunning(obj.(*api.Snapshot)); err != nil {
 			return hookapi.StatusForbidden(err)
 		}
