@@ -83,7 +83,7 @@ func (a *MySQLValidator) Admit(req *admission.AdmissionRequest) *admission.Admis
 		if err != nil {
 			return hookapi.StatusBadRequest(err)
 		}
-		if req.Operation == admission.Update && !util.IsKubeDBOperator(req.UserInfo) {
+		if req.Operation == admission.Update {
 			// validate changes made by user
 			oldObject, err := meta_util.UnmarshalFromJSON(req.OldObject.Raw, api.SchemeGroupVersion)
 			if err != nil {
