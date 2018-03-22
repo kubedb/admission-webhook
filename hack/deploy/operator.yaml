@@ -28,11 +28,6 @@ spec:
         - --tls-private-key-file=/var/serving-cert/tls.key
         - --v=3
         image: kubedb/kubedb-server:canary
-        env:
-        - name: SERVICE_ACCOUNT_NAME
-          valueFrom:
-            fieldRef:
-              fieldPath: spec.serviceAccountName
         ports:
         - containerPort: 8443
         volumeMounts:
@@ -196,4 +191,27 @@ webhooks:
     apiVersions: ["*"]
     resources: ["snapshots"]
     operations: ["CREATE", "UPDATE"]
+  failurePolicy: Fail
+
+---
+# mutating webhook
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: admission.kubedb.com
+  labels:
+    app: kubedb
+webhooks:
+- name: mongodb.admission.kubedb.com
+  clientConfig:
+    service:
+      namespace: default
+      name: kubernetes
+      path: /apis/admission.kubedb.com/v1alpha1/mongodbmutates
+    caBundle: ${KUBE_CA}
+  rules:
+  - apiGroups: ["kubedb.com"]
+    apiVersions: ["*"]
+    resources: ["mongodbs"]
+    operations: ["CREATE", "UPDATE", "DELETE"]
   failurePolicy: Fail
