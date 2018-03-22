@@ -2,7 +2,6 @@ package memcached
 
 import (
 	"net/http"
-	"os"
 	"testing"
 
 	kubeMon "github.com/appscode/kube-mon/api"
@@ -10,7 +9,6 @@ import (
 	api "github.com/kubedb/apimachinery/apis/kubedb/v1alpha1"
 	extFake "github.com/kubedb/apimachinery/client/clientset/versioned/fake"
 	"github.com/kubedb/apimachinery/client/clientset/versioned/scheme"
-	"github.com/kubedb/kubedb-server/pkg/admission/util"
 	admission "k8s.io/api/admission/v1beta1"
 	authenticationV1 "k8s.io/api/authentication/v1"
 	kerr "k8s.io/apimachinery/pkg/api/errors"
@@ -22,8 +20,6 @@ import (
 
 func init() {
 	scheme.AddToScheme(clientSetScheme.Scheme)
-	os.Setenv(util.EnvSvcAccountName, "kubedb-operator")
-	os.Setenv("KUBE_NAMESPACE", "kube-system")
 }
 
 var requestKind = metaV1.GroupVersionKind{
