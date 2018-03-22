@@ -237,7 +237,7 @@ func sampleMongoDB() api.MongoDB {
 				},
 			},
 			DatabaseSecret: &core.SecretVolumeSource{
-				SecretName: "foo-auth",
+				SecretName: "foobar-auth",
 			},
 			Init: &api.InitSpec{
 				ScriptSource: &api.ScriptSourceSpec{
