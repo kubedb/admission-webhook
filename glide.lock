@@ -1,5 +1,5 @@
-hash: c36468996975fbd2bdaf1555fd2549cbf7a4e9f77f41a3a4d37b58f543eac979
-updated: 2018-03-22T18:32:51.061448972+06:00
+hash: fa94341ed8d581dd2ee1f286ae97a373f873b7bcb3ba6fd5b8c5c7b0b4193cba
+updated: 2018-03-23T11:10:22.375110077+06:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
@@ -28,17 +28,17 @@ imports:
   version: eeb8de0ba83795dc2fd86c3667d6566a62276160
   subpackages:
   - api
+- name: github.com/appscode/kubernetes-webhook-util
+  version: 9d399622f03d590cb55fd549131de7393a2b38cc
+  subpackages:
+  - admission/v1beta1
 - name: github.com/appscode/kutil
   version: 436b54978ae275a61a06baa3f0a119864691cf12
   subpackages:
-  - admission
-  - admission/v1beta1
   - core/v1
   - meta
   - registry/admissionreview/v1beta1
-  - runtime/serializer/versioning
   - tools/analytics
-  - workload/v1
 - name: github.com/appscode/mergo
   version: e3000cb3d28c72b837601cac94debd91032d19fe
 - name: github.com/appscode/osm
@@ -180,11 +180,6 @@ imports:
   - spew
 - name: github.com/dgrijalva/jwt-go
   version: 01aeca54ebda6e0fbfafd0a524d234159c05ec20
-- name: github.com/docker/distribution
-  version: edc3ab29cdff8694dd6feb85cfeb4b5f1b38ed9c
-  subpackages:
-  - digestset
-  - reference
 - name: github.com/elazarl/go-bindata-assetfs
   version: 3dcc96556217539f50599357fb481ac0dc7439b9
 - name: github.com/emicklei/go-restful
@@ -204,7 +199,7 @@ imports:
 - name: github.com/go-openapi/jsonreference
   version: 13c6e3589ad90f49bd3e3bbe2c2cb3d7a4142272
 - name: github.com/go-openapi/spec
-  version: d8000b5bfbd1147255710505a27c735b6b2ae2ac
+  version: a3092263d8b39f66ff6fe87b0109668eca1e24ff
 - name: github.com/go-openapi/swag
   version: f3f9494671f93fcff853e3c6e9e948b3eb71e590
 - name: github.com/gogo/protobuf
@@ -243,15 +238,6 @@ imports:
   - OpenAPIv2
   - compiler
   - extensions
-- name: github.com/gophercloud/gophercloud
-  version: 8183543f90d1aef267a5ecc209f2e0715b355acb
-  subpackages:
-  - openstack
-  - openstack/identity/v2/tenants
-  - openstack/identity/v2/tokens
-  - openstack/identity/v3/tokens
-  - openstack/utils
-  - pagination
 - name: github.com/graymeta/stow
   version: db723d93e5b1b0cc0d404c2c5fb0ac4919bda55e
   repo: https://github.com/appscode/stow.git
@@ -318,7 +304,7 @@ imports:
   subpackages:
   - pkg/validator
 - name: github.com/kubedb/mongodb
-  version: caa1058748ea584dfa7a60e0d0603c2865e9292a
+  version: b332ab48897191c89d74ebe7aea0325789abe694
   subpackages:
   - pkg/mutator
   - pkg/validator
@@ -352,8 +338,6 @@ imports:
   version: ae9f0ea1605b9aa6434ed5c731ca35d83ba67c55
 - name: github.com/NYTimes/gziphandler
   version: 56545f4a5d46df9a6648819d1664c3a03a13ffdb
-- name: github.com/opencontainers/go-digest
-  version: a6d0ee40d4207ea02364bd3b9e8e77b9159ba1eb
 - name: github.com/pborman/uuid
   version: ca53cad383cad2479bbba7f7a1a05797ec1386e4
 - name: github.com/peterbourgon/diskv
@@ -536,7 +520,6 @@ imports:
   subpackages:
   - pkg/apis/apiextensions
   - pkg/apis/apiextensions/v1beta1
-  - pkg/features
 - name: k8s.io/apimachinery
   version: 180eddb345a5be3a157cea1c624700ad5bd27b8f
   subpackages:
@@ -811,15 +794,9 @@ imports:
   - listers/storage/v1alpha1
   - listers/storage/v1beta1
   - pkg/version
-  - plugin/pkg/client/auth
-  - plugin/pkg/client/auth/azure
-  - plugin/pkg/client/auth/gcp
-  - plugin/pkg/client/auth/oidc
-  - plugin/pkg/client/auth/openstack
   - rest
   - rest/watch
   - testing
-  - third_party/forked/golang/template
   - tools/auth
   - tools/cache
   - tools/clientcmd
@@ -835,7 +812,6 @@ imports:
   - util/flowcontrol
   - util/homedir
   - util/integer
-  - util/jsonpath
 - name: k8s.io/kube-openapi
   version: 39a7bf85c140f972372c2a0d1ee40adbf0c8bfe1
   subpackages:
@@ -846,29 +822,6 @@ imports:
   - pkg/util/proto
 - name: k8s.io/kubernetes
   version: 925c127ec6b946659ad0fd596fa959be43f0cc05
-  subpackages:
-  - pkg/api/legacyscheme
-  - pkg/apis/apps
-  - pkg/apis/apps/install
-  - pkg/apis/apps/v1
-  - pkg/apis/apps/v1beta1
-  - pkg/apis/apps/v1beta2
-  - pkg/apis/autoscaling
-  - pkg/apis/batch
-  - pkg/apis/batch/install
-  - pkg/apis/batch/v1
-  - pkg/apis/batch/v1beta1
-  - pkg/apis/batch/v2alpha1
-  - pkg/apis/core
-  - pkg/apis/core/install
-  - pkg/apis/core/v1
-  - pkg/apis/extensions
-  - pkg/apis/extensions/install
-  - pkg/apis/extensions/v1beta1
-  - pkg/apis/networking
-  - pkg/features
-  - pkg/util/parsers
-  - pkg/util/pointer
 testImports:
 - name: github.com/stretchr/testify
   version: b91bfb9ebec76498946beb6af7c0230c7cc7ba6c
