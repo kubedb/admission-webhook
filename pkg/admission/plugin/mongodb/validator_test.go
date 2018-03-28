@@ -130,12 +130,22 @@ var cases = []struct {
 		false,
 		false,
 	},
-	{"Edit MongoDB Spec.DatabaseSecret",
+	{"Edit MongoDB Spec.DatabaseSecret with Existing Secret",
 		requestKind,
 		"foo",
 		"default",
 		admission.Update,
-		editSpecSecret(sampleMongoDB()),
+		editExistingSecret(sampleMongoDB()),
+		sampleMongoDB(),
+		false,
+		true,
+	},
+	{"Edit MongoDB Spec.DatabaseSecret with non Existing Secret",
+		requestKind,
+		"foo",
+		"default",
+		admission.Update,
+		editNonExistingSecret(sampleMongoDB()),
 		sampleMongoDB(),
 		false,
 		false,
@@ -227,6 +237,7 @@ func sampleMongoDB() api.MongoDB {
 		},
 		Spec: api.MongoDBSpec{
 			Version:    "3.4",
+			Replicas: types.Int32P(1),
 			DoNotPause: true,
 			Storage: &core.PersistentVolumeClaimSpec{
 				StorageClassName: types.StringP("standard"),
@@ -235,9 +246,6 @@ func sampleMongoDB() api.MongoDB {
 						core.ResourceStorage: resource.MustParse("100Mi"),
 					},
 				},
-			},
-			DatabaseSecret: &core.SecretVolumeSource{
-				SecretName: "foobar-auth",
 			},
 			Init: &api.InitSpec{
 				ScriptSource: &api.ScriptSourceSpec{
@@ -259,9 +267,16 @@ func getAwkwardMongoDB() api.MongoDB {
 	return mongodb
 }
 
-func editSpecSecret(old api.MongoDB) api.MongoDB {
+func editExistingSecret(old api.MongoDB) api.MongoDB {
 	old.Spec.DatabaseSecret = &core.SecretVolumeSource{
 		SecretName: "foo-auth",
+	}
+	return old
+}
+
+func editNonExistingSecret(old api.MongoDB) api.MongoDB {
+	old.Spec.DatabaseSecret = &core.SecretVolumeSource{
+		SecretName: "foo-auth-fused",
 	}
 	return old
 }
