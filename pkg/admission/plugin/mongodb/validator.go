@@ -31,9 +31,9 @@ func (a *MongoDBValidator) Resource() (plural schema.GroupVersionResource, singu
 	return schema.GroupVersionResource{
 			Group:    "admission.kubedb.com",
 			Version:  "v1alpha1",
-			Resource: "mongodbreviews",
+			Resource: "mongodbvalidationreviews",
 		},
-		"mongodbreview"
+		"mongodbvalidationreview"
 }
 
 func (a *MongoDBValidator) Initialize(config *rest.Config, stopCh <-chan struct{}) error {
@@ -80,9 +80,6 @@ func (a *MongoDBValidator) Admit(req *admission.AdmissionRequest) *admission.Adm
 		} else if kerr.IsNotFound(err) {
 			break
 		}
-		if err = mgv.OnDeleteLeftOvers(a.client, a.extClient.KubedbV1alpha1(), obj); err != nil {
-			return hookapi.StatusForbidden(err)
-		}
 	default:
 		obj, err := meta_util.UnmarshalFromJSON(req.Object.Raw, api.SchemeGroupVersion)
 		if err != nil {
@@ -99,12 +96,7 @@ func (a *MongoDBValidator) Admit(req *admission.AdmissionRequest) *admission.Adm
 			}
 		}
 		// validate database specs
-		if err = mgv.OnCreateValidate(a.client, a.extClient.KubedbV1alpha1(), obj.(*api.MongoDB)); err != nil {
-			return hookapi.StatusForbidden(err)
-		}
-
-		// Do
-		if err = mgv.OnCreateLeftOvers(a.extClient.KubedbV1alpha1(), obj.(*api.MongoDB)); err != nil {
+		if err = mgv.ValidateMongoDB(a.client, a.extClient.KubedbV1alpha1(), obj.(*api.MongoDB)); err != nil {
 			return hookapi.StatusForbidden(err)
 		}
 	}
