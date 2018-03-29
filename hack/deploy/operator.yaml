@@ -145,7 +145,7 @@ webhooks:
     service:
       namespace: default
       name: kubernetes
-      path: /apis/admission.kubedb.com/v1alpha1/mongodbvalidationreview
+      path: /apis/admission.kubedb.com/v1alpha1/mongodbvalidationreviews
     caBundle: ${KUBE_CA}
   rules:
   - apiGroups: ["kubedb.com"]
@@ -192,7 +192,19 @@ webhooks:
     resources: ["snapshots"]
     operations: ["CREATE", "UPDATE"]
   failurePolicy: Fail
-
+- name: dormantdatabase.admission.kubedb.com
+  clientConfig:
+    service:
+      namespace: default
+      name: kubernetes
+      path: /apis/admission.kubedb.com/v1alpha1/dormantdatabasereviews
+    caBundle: ${KUBE_CA}
+  rules:
+  - apiGroups: ["kubedb.com"]
+    apiVersions: ["*"]
+    resources: ["dormantdatabases"]
+    operations: ["CREATE", "UPDATE", "DELETE"]
+  failurePolicy: Fail
 ---
 # mutating webhook
 apiVersion: admissionregistration.k8s.io/v1beta1
@@ -207,7 +219,7 @@ webhooks:
     service:
       namespace: default
       name: kubernetes
-      path: /apis/admission.kubedb.com/v1alpha1/mongodbmutationreview
+      path: /apis/admission.kubedb.com/v1alpha1/mongodbmutationreviews
     caBundle: ${KUBE_CA}
   rules:
   - apiGroups: ["kubedb.com"]
