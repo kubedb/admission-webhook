@@ -3,12 +3,12 @@ package mutator
 import (
 	"fmt"
 
+	"github.com/appscode/go/log"
 	"github.com/appscode/go/types"
 	mon_api "github.com/appscode/kube-mon/api"
 	"github.com/appscode/kutil"
 	core_util "github.com/appscode/kutil/core/v1"
 	meta_util "github.com/appscode/kutil/meta"
-	"github.com/cloudflare/cfssl/log"
 	api "github.com/kubedb/apimachinery/apis/kubedb/v1alpha1"
 	cs "github.com/kubedb/apimachinery/client/clientset/versioned/typed/kubedb/v1alpha1"
 	"github.com/pkg/errors"
@@ -51,33 +51,32 @@ func fuseDormantDB(extClient cs.KubedbV1alpha1Interface, mongodb *api.MongoDB) e
 	}
 
 	// Check DatabaseKind
-	if dormantDb.Labels[api.LabelDatabaseKind] != api.ResourceKindMongoDB {
+	if value, _ := meta_util.GetStringValue(dormantDb.Labels, api.LabelDatabaseKind); value != api.ResourceKindMongoDB {
 		return errors.New(fmt.Sprintf(`invalid MongoDB: "%v". Exists DormantDatabase "%v" of different Kind`, mongodb.Name, dormantDb.Name))
 	}
 
 	// Check Origin Spec
 	drmnOriginSpec := dormantDb.Spec.Origin.Spec.MongoDB
-	originalSpec := mongodb.Spec
 
 	// If DatabaseSecret of new object is not given,
 	// Take dormantDatabaseSecretName
-	if originalSpec.DatabaseSecret == nil {
-		originalSpec.DatabaseSecret = drmnOriginSpec.DatabaseSecret
+	if mongodb.Spec.DatabaseSecret == nil {
+		mongodb.Spec.DatabaseSecret = drmnOriginSpec.DatabaseSecret
 	} else {
-		drmnOriginSpec.DatabaseSecret = originalSpec.DatabaseSecret
+		drmnOriginSpec.DatabaseSecret = mongodb.Spec.DatabaseSecret
 	}
 
 	// Skip checking doNotPause
-	drmnOriginSpec.DoNotPause = originalSpec.DoNotPause
+	drmnOriginSpec.DoNotPause = mongodb.Spec.DoNotPause
 
 	// Skip checking Monitoring
-	drmnOriginSpec.Monitor = originalSpec.Monitor
+	drmnOriginSpec.Monitor = mongodb.Spec.Monitor
 
 	// Skip Checking BackUP Scheduler
-	drmnOriginSpec.BackupSchedule = originalSpec.BackupSchedule
+	drmnOriginSpec.BackupSchedule = mongodb.Spec.BackupSchedule
 
-	if !meta_util.Equal(drmnOriginSpec, &originalSpec) {
-		diff := meta_util.Diff(drmnOriginSpec, &originalSpec)
+	if !meta_util.Equal(drmnOriginSpec, &mongodb.Spec) {
+		diff := meta_util.Diff(drmnOriginSpec, &mongodb.Spec)
 		log.Errorf("mongodb spec mismatches with OriginSpec in DormantDatabases. Diff: %v", diff)
 		return errors.New(fmt.Sprintf("mongodb spec mismatches with OriginSpec in DormantDatabases. Diff: %v", diff))
 	}
@@ -107,21 +106,4 @@ func setMonitoringPort(mongodb *api.MongoDB) {
 			mongodb.Spec.Monitor.Prometheus.Port = api.PrometheusExporterPortNumber
 		}
 	}
-}
-
-func checkSecret(client kubernetes.Interface, mongodb *api.MongoDB) error {
-	secretName := fmt.Sprintf("%v-auth", mongodb.Name)
-	secret, err := client.CoreV1().Secrets(mongodb.Namespace).Get(secretName, metav1.GetOptions{})
-	if err != nil {
-		if kerr.IsNotFound(err) {
-			return nil
-		} else {
-			return err
-		}
-	}
-	if secret.Labels[api.LabelDatabaseKind] != api.ResourceKindMongoDB ||
-		secret.Labels[api.LabelDatabaseName] != mongodb.Name {
-		return fmt.Errorf(`intended secret "%v" already exists`, secretName)
-	}
-	return nil
 }

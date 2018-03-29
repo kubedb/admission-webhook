@@ -237,7 +237,7 @@ func sampleMongoDB() api.MongoDB {
 		},
 		Spec: api.MongoDBSpec{
 			Version:    "3.4",
-			Replicas: types.Int32P(1),
+			Replicas:   types.Int32P(1),
 			DoNotPause: true,
 			Storage: &core.PersistentVolumeClaimSpec{
 				StorageClassName: types.StringP("standard"),
