@@ -1,5 +1,5 @@
-hash: 8d55ad0936cb4cc2fa13a3680cf5a5ca0d6dcd91e72bef22c61e8ff4b6d27517
-updated: 2018-04-02T18:25:11.132939241-07:00
+hash: e6809b3e0225472ccbb5440b58f0cf69d017adf61bd801c197fb3e5802288cf3
+updated: 2018-04-03T13:20:43.615466153+06:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
@@ -23,7 +23,7 @@ imports:
   - types
   - version
 - name: github.com/appscode/jsonpatch
-  version: 58a38a46ddb591a543c6b1003213353e29331c5a
+  version: 1359b374de83fa14fd58ab10aa8ea4935f84d249
 - name: github.com/appscode/kube-mon
   version: eeb8de0ba83795dc2fd86c3667d6566a62276160
   subpackages:
@@ -228,7 +228,7 @@ imports:
 - name: github.com/google/gofuzz
   version: 44d81051d367757e1c7c6a5a86423ece9afcf63c
 - name: github.com/google/uuid
-  version: dec09d789f3dba190787f8b4454c7d3c936fed9e
+  version: e367a344cbe8e08149f9951115dc299ebd42b919
 - name: github.com/googleapis/gnostic
   version: 0c5108395e2debce0d731cf0287ddf7242066aba
   subpackages:
@@ -236,7 +236,7 @@ imports:
   - compiler
   - extensions
 - name: github.com/graymeta/stow
-  version: 1df3851b8fc06f775b3daed2f19442b3c5b26a37
+  version: db723d93e5b1b0cc0d404c2c5fb0ac4919bda55e
   repo: https://github.com/appscode/stow.git
   vcs: git
   subpackages:
@@ -280,7 +280,7 @@ imports:
 - name: github.com/juju/ratelimit
   version: 5b9ff866471762aa2ab2dced63c9fb6f53921342
 - name: github.com/kubedb/apimachinery
-  version: 3fc73e4362bbd370598eaddb845b6ecc9c07006e
+  version: f043432cd4bc44c2e671bd4b6226b239e770460c
   subpackages:
   - apis/kubedb
   - apis/kubedb/v1alpha1
@@ -290,6 +290,9 @@ imports:
   - client/clientset/versioned/typed/kubedb/v1alpha1
   - client/clientset/versioned/typed/kubedb/v1alpha1/fake
   - client/clientset/versioned/typed/kubedb/v1alpha1/util
+  - pkg/admission
+  - pkg/admission/dormantdatabase
+  - pkg/admission/snapshot
   - pkg/storage
   - pkg/validator
 - name: github.com/kubedb/elasticsearch
@@ -301,10 +304,9 @@ imports:
   subpackages:
   - pkg/validator
 - name: github.com/kubedb/mongodb
-  version: 8adbd1bdb4c483347821f827d0ed16b369adff43
+  version: 8a6710d46bd7e341825310702c03856657062e8c
   subpackages:
-  - pkg/mutator
-  - pkg/validator
+  - pkg/admission
 - name: github.com/kubedb/mysql
   version: b4b749dff97bd2ed8a91ae418be86e1bb1f03bbd
   subpackages:
@@ -443,7 +445,7 @@ imports:
   - googleapi/internal/uritemplates
   - storage/v1
 - name: google.golang.org/appengine
-  version: 4f7eeb5305a4ba1966344836ba4af9996b7b4e05
+  version: ad39d7fab7c60b2493fdc318c3d2cdb2128f92a4
   subpackages:
   - internal
   - internal/app_identity
