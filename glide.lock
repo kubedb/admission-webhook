@@ -1,5 +1,5 @@
-hash: e6809b3e0225472ccbb5440b58f0cf69d017adf61bd801c197fb3e5802288cf3
-updated: 2018-04-03T16:27:56.39291448+06:00
+hash: ac4aef05e6217b7f3f7c598b9da806b14c676c42226ab684ca403d8381b0f530
+updated: 2018-04-03T11:32:08.098522604-07:00
 imports:
 - name: bitbucket.org/ww/goautoneg
   version: 75cd24fc2f2c2a2088577d12123ddee5f54e0675
@@ -23,7 +23,7 @@ imports:
   - types
   - version
 - name: github.com/appscode/jsonpatch
-  version: 1359b374de83fa14fd58ab10aa8ea4935f84d249
+  version: 58a38a46ddb591a543c6b1003213353e29331c5a
 - name: github.com/appscode/kube-mon
   version: eeb8de0ba83795dc2fd86c3667d6566a62276160
   subpackages:
@@ -228,7 +228,7 @@ imports:
 - name: github.com/google/gofuzz
   version: 44d81051d367757e1c7c6a5a86423ece9afcf63c
 - name: github.com/google/uuid
-  version: e367a344cbe8e08149f9951115dc299ebd42b919
+  version: dec09d789f3dba190787f8b4454c7d3c936fed9e
 - name: github.com/googleapis/gnostic
   version: 0c5108395e2debce0d731cf0287ddf7242066aba
   subpackages:
@@ -236,7 +236,7 @@ imports:
   - compiler
   - extensions
 - name: github.com/graymeta/stow
-  version: db723d93e5b1b0cc0d404c2c5fb0ac4919bda55e
+  version: 1df3851b8fc06f775b3daed2f19442b3c5b26a37
   repo: https://github.com/appscode/stow.git
   vcs: git
   subpackages:
@@ -280,7 +280,7 @@ imports:
 - name: github.com/juju/ratelimit
   version: 5b9ff866471762aa2ab2dced63c9fb6f53921342
 - name: github.com/kubedb/apimachinery
-  version: cd3349650f4ce29fffdaa87489a1b38406a7095a
+  version: 3f1720706c6de2a19adda06600f8310fe4cabf45
   subpackages:
   - apis/kubedb
   - apis/kubedb/v1alpha1
@@ -304,7 +304,7 @@ imports:
   subpackages:
   - pkg/validator
 - name: github.com/kubedb/mongodb
-  version: eb7ff39fef03001330fd835c5bd3969c10caa323
+  version: 310843b86edfafd7ed5d0950526f209c9c4e363a
   subpackages:
   - pkg/admission
 - name: github.com/kubedb/mysql
@@ -382,7 +382,7 @@ imports:
   subpackages:
   - doc
 - name: github.com/spf13/pflag
-  version: 1cd4a0c365d95803411bec89fb7b76bade17053b
+  version: 1ce0cc6db4029d97571db82f85092fccedb572ce
 - name: github.com/ugorji/go
   version: ded73eae5db7e7a0ef6f55aace87a2873c5d2b74
   subpackages:
@@ -445,7 +445,7 @@ imports:
   - googleapi/internal/uritemplates
   - storage/v1
 - name: google.golang.org/appengine
-  version: ad39d7fab7c60b2493fdc318c3d2cdb2128f92a4
+  version: 4f7eeb5305a4ba1966344836ba4af9996b7b4e05
   subpackages:
   - internal
   - internal/app_identity
